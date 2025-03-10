@@ -1,0 +1,169 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-clipboard-check me-2"></i>Rotina de Inspeção
+            </h5>
+            <div>
+                <a href="{{ url_for('listar_rotinas_inspecao') }}" class="btn btn-sm btn-info">
+                    <i class="fas fa-history me-1"></i> Histórico de Inspeções
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    {% if 'crm_token' not in session %}
+                    <div class="alert alert-warning mb-4" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                            <div>
+                                <h5 class="alert-heading">Aviso: Token CRM não configurado</h5>
+                                <p class="mb-0">Você precisa importar o token do CRM antes de iniciar a rotina de inspeção.</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="text-center">
+                            <a href="{{ url_for('set_crm_token') }}" class="btn btn-warning">
+                                <i class="fas fa-key me-1"></i> Importar Token
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success mb-4" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-check-circle fa-2x me-3"></i>
+                            <div>
+                                <h5 class="alert-heading">Token CRM Configurado</h5>
+                                <p class="mb-0">Token atual: {{ session['crm_token'][:8] }}...</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="card bg-light shadow-sm mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-info-circle me-2"></i>Como funciona a inspeção?
+                            </h5>
+                            <ol class="mt-3">
+                                <li class="mb-2">Importe um arquivo .lst do sistema Logix</li>
+                                <li class="mb-2">O sistema extrairá os registros dos itens a serem inspecionados</li>
+                                <li class="mb-2">Você poderá consultar os desenhos técnicos via CRM</li>
+                                <li class="mb-2">Marque cada item como "Inspecionado" ou "Adiado"</li>
+                                <li class="mb-2">Salve a rotina quando todos os itens estiverem processados</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-upload me-2"></i>Importar arquivo .lst
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" enctype="multipart/form-data" class="dropzone-form">
+                                <div class="mb-4 text-center p-5 border rounded" id="drop-area">
+                                    <i class="fas fa-file-upload fa-3x mb-3 text-primary"></i>
+                                    <h5 class="mb-2">Arraste e solte o arquivo .lst</h5>
+                                    <p class="text-muted mb-3">ou</p>
+                                    <label class="btn btn-primary" for="file">
+                                        <i class="fas fa-folder-open me-1"></i> Selecionar Arquivo
+                                    </label>
+                                    <input class="d-none" type="file" id="file" name="file" accept=".lst" required>
+                                    <p class="mt-3 mb-0 selected-file-name"></p>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <a href="{{ url_for('main_menu') }}" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left me-1"></i> Voltar
+                                    </a>
+                                    <button type="submit" class="btn btn-success" id="submit-btn" disabled>
+                                        <i class="fas fa-upload me-1"></i> Importar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('file');
+    const dropArea = document.getElementById('drop-area');
+    const fileNameDisplay = document.querySelector('.selected-file-name');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    // Função para atualizar a interface quando um arquivo é selecionado
+    function handleFileSelect(file) {
+        if (file) {
+            if (file.name.toLowerCase().endsWith('.lst')) {
+                fileNameDisplay.textContent = `Arquivo selecionado: ${file.name}`;
+                fileNameDisplay.classList.add('text-success');
+                fileNameDisplay.classList.remove('text-danger');
+                dropArea.classList.add('border-success');
+                dropArea.classList.remove('border-danger');
+                submitBtn.disabled = false;
+            } else {
+                fileNameDisplay.textContent = 'Erro: Somente arquivos .lst são permitidos';
+                fileNameDisplay.classList.add('text-danger');
+                fileNameDisplay.classList.remove('text-success');
+                dropArea.classList.add('border-danger');
+                dropArea.classList.remove('border-success');
+                submitBtn.disabled = true;
+                fileInput.value = '';
+            }
+        } else {
+            fileNameDisplay.textContent = '';
+            dropArea.classList.remove('border-success', 'border-danger');
+            submitBtn.disabled = true;
+        }
+    }
+    
+    // Ouvinte para seleção de arquivo via input
+    fileInput.addEventListener('change', function() {
+        handleFileSelect(this.files[0]);
+    });
+    
+    // Ouvintes para arrastar e soltar
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, function() {
+            this.classList.add('border-primary', 'bg-light');
+        }, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, function() {
+            this.classList.remove('border-primary', 'bg-light');
+        }, false);
+    });
+    
+    dropArea.addEventListener('drop', function(e) {
+        const file = e.dataTransfer.files[0];
+        fileInput.files = e.dataTransfer.files;
+        handleFileSelect(file);
+    }, false);
+    
+    // Clicar na área de drop também abre o seletor de arquivo
+    dropArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+});
+</script>
+{% endblock %}

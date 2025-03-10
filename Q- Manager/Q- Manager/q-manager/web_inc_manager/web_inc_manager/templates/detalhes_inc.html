@@ -1,0 +1,185 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-file-alt me-2"></i>Detalhes da INC #{{ inc.oc }}
+                    </h4>
+                    <div>
+                        <a href="{{ url_for('export_pdf', inc_id=inc.id) }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-file-pdf me-1"></i> Exportar PDF
+                        </a>
+                        <a href="{{ url_for('print_inc_label', inc_id=inc.id) }}" class="btn btn-sm btn-info">
+                            <i class="fas fa-print me-1"></i> Imprimir Etiqueta
+                        </a>
+                        <a href="{{ url_for('visualizar_incs') }}" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-group mb-3">
+                                <h5 class="text-muted mb-2">Informações Básicas</h5>
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label fw-bold">NF-e:</label>
+                                                <p>{{ inc.nf }}</p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label fw-bold">Data:</label>
+                                                <p class="format-date">{{ inc.data }}</p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label fw-bold">Representante:</label>
+                                                <p>{{ inc.representante }}</p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label fw-bold">Fornecedor:</label>
+                                                <p>{{ inc.fornecedor }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="info-group mb-3">
+                                <h5 class="text-muted mb-2">Detalhes do Item</h5>
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label class="form-label fw-bold">Item:</label>
+                                                <p>{{ inc.item }}</p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label fw-bold">Qtd. Recebida:</label>
+                                                <p>{{ inc.quantidade_recebida }}</p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label fw-bold">Qtd. com Defeito:</label>
+                                                <p>{{ inc.quantidade_com_defeito }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-group mb-3">
+                                <h5 class="text-muted mb-2">Avaliação do Problema</h5>
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Descrição do Defeito:</label>
+                                            <p>{{ inc.descricao_defeito }}</p>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Urgência:</label>
+                                            <p>
+                                                <span class="badge {% if inc.urgencia == 'Crítico' %}bg-danger{% elif inc.urgencia == 'Moderada' %}bg-warning{% else %}bg-success{% endif %}">
+                                                    {{ inc.urgencia }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Ação Recomendada:</label>
+                                            <p>{{ inc.acao_recomendada }}</p>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Status:</label>
+                                            <p>
+                                                <span class="badge {% if inc.status == 'Em andamento' %}bg-primary{% elif inc.status == 'Concluída' %}bg-success{% else %}bg-danger{% endif %}">
+                                                    {{ inc.status }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <h5 class="text-muted mb-3">Fotos</h5>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <div class="row">
+                                        {% if fotos %}
+                                            {% for foto in fotos %}
+                                            <div class="col-md-3 mb-3">
+                                                <div class="image-container position-relative">
+                                                    <a href="{{ url_for('static', filename=foto) }}" target="_blank" data-bs-toggle="tooltip" title="Clique para ampliar">
+                                                        <img src="{{ url_for('static', filename=foto) }}" class="img-fluid rounded" alt="Foto do defeito">
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="col-12 text-center">
+                                                <p class="text-muted">Nenhuma foto disponível</p>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12 d-flex justify-content-center">
+                            <a href="{{ url_for('export_pdf', inc_id=inc.id) }}" class="btn btn-primary me-2">
+                                <i class="fas fa-file-pdf me-1"></i> Exportar PDF
+                            </a>
+                            <a href="{{ url_for('print_inc_label', inc_id=inc.id) }}" class="btn btn-info me-2">
+                                <i class="fas fa-print me-1"></i> Imprimir Etiqueta
+                            </a>
+                            <a href="{{ url_for('editar_inc', inc_id=inc.id) }}" class="btn btn-warning me-2">
+                                <i class="fas fa-edit me-1"></i> Editar INC
+                            </a>
+                            <a href="{{ url_for('visualizar_incs') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Voltar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Inicializa os tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Adiciona efeito de zoom nas imagens
+        const images = document.querySelectorAll('.image-container img');
+        images.forEach(img => {
+            img.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+                this.style.transition = 'transform 0.3s ease';
+                this.style.zIndex = '1';
+                this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+            });
+            
+            img.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.zIndex = '0';
+                this.style.boxShadow = 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,43 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1 class="text-center mb-4">Editar Layout</h1>
+<form method="POST">
+    <div class="mb-3">
+        <label for="element" class="form-label">Elemento</label>
+        <select class="form-select" id="element" name="element" onchange="loadSettings(this.value)">
+            <option value="TButton">Botões</option>
+            <option value="TLabel">Labels</option>
+            <option value="TEntry">Entradas</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="foreground" class="form-label">Cor do Texto</label>
+        <input type="color" class="form-control" id="foreground" name="foreground" value="#000000">
+    </div>
+    <div class="mb-3">
+        <label for="background" class="form-label">Cor de Fundo</label>
+        <input type="color" class="form-control" id="background" name="background" value="#ffffff">
+    </div>
+    <div class="mb-3">
+        <label for="font_family" class="form-label">Fonte</label>
+        <input type="text" class="form-control" id="font_family" name="font_family" value="Helvetica">
+    </div>
+    <div class="mb-3">
+        <label for="font_size" class="form-label">Tamanho da Fonte</label>
+        <input type="number" class="form-control" id="font_size" name="font_size" value="12" min="8" max="20">
+    </div>
+    <button type="submit" class="btn btn-success">Aplicar</button>
+    <a href="{{ url_for('main_menu') }}" class="btn btn-secondary">Voltar</a>
+</form>
+<script>
+function loadSettings(element) {
+    const settings = {{ settings|tojson }};
+    const setting = settings[element] || {foreground: "#000000", background: "#ffffff", font_family: "Helvetica", font_size: 12};
+    document.getElementById('foreground').value = setting.foreground;
+    document.getElementById('background').value = setting.background;
+    document.getElementById('font_family').value = setting.font_family;
+    document.getElementById('font_size').value = setting.font_size;
+}
+$(document).ready(() => loadSettings('TButton'));
+</script>
+{% endblock %}

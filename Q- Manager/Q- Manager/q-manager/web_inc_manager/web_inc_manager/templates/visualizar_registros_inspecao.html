@@ -1,0 +1,291 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-clipboard-check me-2"></i>Registros de Inspeção
+            </h5>
+            <div>
+                <a href="{{ url_for('listar_rotinas_inspecao') }}" class="btn btn-sm btn-info">
+                    <i class="fas fa-history me-1"></i> Histórico de Inspeções
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Elemento para armazenar URL base do CRM -->
+            <div id="crm-base-url" data-url="{{ config.CRM_BASE_URL }}"></div>
+
+            <!-- Campo oculto para armazenar a posição de rolagem -->
+            <input type="hidden" id="stored_scroll_position" value="{{ request.args.get('scroll_position', '0') }}">
+
+            {% if session.get('inspecao_crm_token') %}
+            <div class="alert alert-info mb-3 d-flex justify-content-between align-items-center" role="alert">
+                <div>
+                    <i class="fas fa-key me-2"></i> Token CRM em uso: 
+                    <span class="badge bg-light text-primary">{{ session['inspecao_crm_token'][:8] }}...</span>
+                </div>
+                <button class="btn btn-sm btn-warning" onclick="document.getElementById('tokenForm').style.display='block'">
+                    <i class="fas fa-edit me-1"></i> Alterar Token
+                </button>
+            </div>
+            <div id="tokenForm" style="display:none;" class="mb-3 card bg-light">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('set_crm_token') }}" class="row g-3">
+                        <div class="col-md-9">
+                            <input type="text" class="form-control" name="crm_link" placeholder="Cole o novo link do CRM" required>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">Atualizar Token</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="alert alert-warning mb-3" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i> Todos os registros devem ser inspecionados ou adiados antes de salvar a rotina.
+            </div>
+
+            <div class="progress mb-4" style="height: 25px;">
+                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+
+            {% for ar, registros in grupos_ar %}
+            <div class="card mb-3 shadow-sm" id="ar-{{ ar }}">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard me-2"></i> AR: {{ ar }}
+                    </h5>
+                    <span class="badge bg-primary">{{ registros|length }} itens</span>
+                </div>
+                <div class="card-body">
+                    {% if registros %}
+                    <h5 class="card-title mb-3">Fornecedor: {{ registros[0].fornecedor }}</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Descrição</th>
+                                    <th>Quantidade</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for registro in registros %}
+                                <tr>
+                                    <td><strong>{{ registro.item }}</strong></td>
+                                    <td>{{ registro.descricao }}</td>
+                                    <td>{{ registro.qtd_recebida }}</td>
+                                    <td class="status-cell" data-inspecionado="{{ registro.inspecionado|lower }}" data-adiado="{{ registro.adiado|lower }}">
+                                        {% if registro.inspecionado %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i> Inspecionado
+                                            </span>
+                                        {% elif registro.adiado %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-clock me-1"></i> Adiado
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-hourglass-half me-1"></i> Pendente
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="openCRMLink('{{ registro.item }}', '{{ session.get('inspecao_crm_token', '') }}')">
+                                                <i class="fas fa-search me-1"></i> Acessar Desenho
+                                            </button>
+                                            
+                                            <!-- Form para inspecionar -->
+                                            <form method="POST" action="{{ url_for('visualizar_registros_inspecao') }}" 
+                                                  style="display:inline;" 
+                                                  onsubmit="return saveAndSubmit(this, 'inspecionar', {{ ar }}, {{ loop.index0 }})">
+                                                <input type="hidden" name="item_index" value="{{ loop.index0 }}">
+                                                <input type="hidden" name="action" value="inspecionar">
+                                                <input type="hidden" name="ar" value="{{ ar }}">
+                                                <input type="hidden" name="scroll_position" class="scroll-position-input">
+                                                <button type="submit" class="btn btn-success btn-sm" {% if registro.inspecionado %}disabled{% endif %}>
+                                                    <i class="fas fa-check me-1"></i> Inspecionar
+                                                </button>
+                                            </form>
+                                            
+                                            <!-- Form para adiar -->
+                                            <form method="POST" action="{{ url_for('visualizar_registros_inspecao') }}" 
+                                                  style="display:inline;" 
+                                                  onsubmit="return saveAndSubmit(this, 'adiar', {{ ar }}, {{ loop.index0 }})">
+                                                <input type="hidden" name="item_index" value="{{ loop.index0 }}">
+                                                <input type="hidden" name="action" value="adiar">
+                                                <input type="hidden" name="ar" value="{{ ar }}">
+                                                <input type="hidden" name="scroll_position" class="scroll-position-input">
+                                                <button type="submit" class="btn btn-warning btn-sm" {% if registro.adiado %}disabled{% endif %}>
+                                                    <i class="fas fa-clock me-1"></i> Adiar
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <form method="POST" action="{{ url_for('salvar_rotina_inspecao') }}">
+                <div class="card mb-4 shadow-sm">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">Progresso da Inspeção</h5>
+                            <div id="progress-text" class="text-muted">Processando itens...</div>
+                        </div>
+                        <div>
+                            <button type="submit" class="btn btn-primary" id="saveButton" disabled>
+                                <i class="fas fa-save me-1"></i> Salvar Rotina
+                            </button>
+                            <a href="{{ url_for('main_menu') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Voltar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Função melhorada para salvar e submeter o formulário
+function saveAndSubmit(form, action, ar, index) {
+    // Salva a posição de rolagem atual
+    const scrollPosition = window.scrollY || window.pageYOffset;
+    
+    // Armazena em localStorage para persistência entre requisições
+    localStorage.setItem('inspecao_scroll_position', scrollPosition);
+    
+    // Atualiza o campo hidden no formulário
+    form.querySelector('.scroll-position-input').value = scrollPosition;
+    
+    // Permite que o formulário seja enviado
+    return true;
+}
+
+// Função para restaurar a posição de rolagem
+function restoreScrollPosition() {
+    // Tenta obter do localStorage primeiro (mais confiável)
+    let scrollPosition = localStorage.getItem('inspecao_scroll_position');
+    
+    // Se não estiver no localStorage, tenta obter do campo hidden ou da URL
+    if (!scrollPosition) {
+        const storedElement = document.getElementById('stored_scroll_position');
+        if (storedElement) {
+            scrollPosition = storedElement.value;
+        }
+    }
+    
+    // Se encontrou uma posição, rola para ela com um pequeno atraso para garantir
+    // que todos os elementos da página estejam carregados
+    if (scrollPosition && scrollPosition !== '0') {
+        setTimeout(() => {
+            window.scrollTo({
+                top: parseInt(scrollPosition),
+                behavior: 'auto' // Usa 'auto' em vez de 'smooth' para evitar animação visível
+            });
+        }, 100);
+    }
+}
+
+// Função para atualizar a barra de progresso
+function updateProgressBar() {
+    const statusCells = document.querySelectorAll('.status-cell');
+    let processedCount = 0;
+    const totalCount = statusCells.length;
+    
+    statusCells.forEach(cell => {
+        const inspecionado = cell.getAttribute('data-inspecionado') === 'true';
+        const adiado = cell.getAttribute('data-adiado') === 'true';
+        if (inspecionado || adiado) {
+            processedCount++;
+        }
+    });
+    
+    const progressPercent = Math.round((processedCount / totalCount) * 100);
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    
+    progressBar.style.width = `${progressPercent}%`;
+    progressBar.textContent = `${progressPercent}%`;
+    progressBar.setAttribute('aria-valuenow', progressPercent);
+    
+    if (progressText) {
+        progressText.textContent = `Processados ${processedCount} de ${totalCount} itens (${progressPercent}%)`;
+    }
+    
+    // Atualizar estilo da barra de progresso com base no percentual
+    if (progressPercent < 30) {
+        progressBar.classList.remove('bg-success', 'bg-warning');
+        progressBar.classList.add('bg-danger');
+    } else if (progressPercent < 70) {
+        progressBar.classList.remove('bg-success', 'bg-danger');
+        progressBar.classList.add('bg-warning');
+    } else {
+        progressBar.classList.remove('bg-warning', 'bg-danger');
+        progressBar.classList.add('bg-success');
+    }
+    
+    // Atualizar o botão de salvar
+    const saveButton = document.getElementById('saveButton');
+    if (saveButton) {
+        saveButton.disabled = progressPercent !== 100;
+    }
+}
+
+// Inicializa quando o documento estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    // Preenche todos os inputs de posição de rolagem com o valor atual
+    document.querySelectorAll('.scroll-position-input').forEach(input => {
+        input.value = window.scrollY || window.pageYOffset;
+    });
+    
+    // Atualiza a barra de progresso
+    updateProgressBar();
+    
+    // Restaura a posição de rolagem
+    restoreScrollPosition();
+    
+    // Adiciona classes para destacar visualmente os status
+    document.querySelectorAll('.status-cell').forEach(cell => {
+        const inspecionado = cell.getAttribute('data-inspecionado') === 'true';
+        const adiado = cell.getAttribute('data-adiado') === 'true';
+        
+        if (inspecionado) {
+            cell.parentElement.classList.add('table-success');
+        } else if (adiado) {
+            cell.parentElement.classList.add('table-warning');
+        }
+    });
+    
+    // Atualiza botões de ação baseado no status
+    document.querySelectorAll('.status-cell').forEach(cell => {
+        const row = cell.parentElement;
+        const inspecionado = cell.getAttribute('data-inspecionado') === 'true';
+        const adiado = cell.getAttribute('data-adiado') === 'true';
+        
+        if (inspecionado) {
+            row.querySelector('button.btn-success').disabled = true;
+            row.querySelector('button.btn-warning').disabled = false;
+        } else if (adiado) {
+            row.querySelector('button.btn-success').disabled = false;
+            row.querySelector('button.btn-warning').disabled = true;
+        }
+    });
+});
+</script>
+{% endblock %}

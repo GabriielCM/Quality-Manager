@@ -1,0 +1,170 @@
+<!-- Novo template: kanban_inc.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Quadro Kanban de INCs</h1>
+        <div class="btn-group">
+            <a href="{{ url_for('visualizar_incs') }}" class="btn btn-outline-primary">
+                <i class="fas fa-list"></i> Visualização em Lista
+            </a>
+            <a href="{{ url_for('kanban_inc') }}" class="btn btn-primary">
+                <i class="fas fa-columns"></i> Visualização Kanban
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="kanban-container">
+                <!-- Coluna: Em andamento -->
+                <div class="kanban-column">
+                    <div class="kanban-column-header bg-primary text-white">
+                        <h5>Em andamento</h5>
+                        <span class="badge bg-light text-primary">{{ incs_em_andamento|length }}</span>
+                    </div>
+                    <div class="kanban-items">
+                        {% for inc in incs_em_andamento %}
+                        <div class="kanban-item" draggable="true" data-id="{{ inc.id }}">
+                            <div class="kanban-item-header">
+                                <span class="badge bg-light text-dark">INC #{{ inc.oc }}</span>
+                                <span class="badge {% if inc.urgencia == 'Crítico' %}bg-danger{% elif inc.urgencia == 'Moderada' %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ inc.urgencia }}
+                                </span>
+                            </div>
+                            <div class="kanban-item-content">
+                                <p><strong>Item:</strong> {{ inc.item }}</p>
+                                <p><strong>Fornecedor:</strong> {{ inc.fornecedor }}</p>
+                                <p class="text-truncate"><small>{{ inc.descricao_defeito }}</small></p>
+                            </div>
+                            <div class="kanban-item-footer">
+                                <small class="text-muted">{{ inc.data }}</small>
+                                <div class="kanban-actions">
+                                    <a href="{{ url_for('detalhes_inc', inc_id=inc.id) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Detalhes">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Coluna: Aguardando Fornecedor -->
+                <div class="kanban-column">
+                    <div class="kanban-column-header bg-warning text-dark">
+                        <h5>Aguardando Fornecedor</h5>
+                        <span class="badge bg-light text-warning">{{ incs_aguardando|length }}</span>
+                    </div>
+                    <div class="kanban-items">
+                        {% for inc in incs_aguardando %}
+                        <div class="kanban-item" draggable="true" data-id="{{ inc.id }}">
+                            <!-- Conteúdo similar ao anterior -->
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Coluna: Concluídas -->
+                <div class="kanban-column">
+                    <div class="kanban-column-header bg-success text-white">
+                        <h5>Concluídas</h5>
+                        <span class="badge bg-light text-success">{{ incs_concluidas|length }}</span>
+                    </div>
+                    <div class="kanban-items">
+                        {% for inc in incs_concluidas %}
+                        <div class="kanban-item" draggable="true" data-id="{{ inc.id }}">
+                            <!-- Conteúdo similar ao anterior -->
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuração de drag and drop
+    const items = document.querySelectorAll('.kanban-item');
+    const columns = document.querySelectorAll('.kanban-items');
+    
+    let draggedItem = null;
+    
+    items.forEach(item => {
+        item.addEventListener('dragstart', function() {
+            draggedItem = this;
+            setTimeout(() => this.classList.add('dragging'), 0);
+        });
+        
+        item.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+            draggedItem = null;
+        });
+    });
+    
+    columns.forEach(column => {
+        column.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        });
+        
+        column.addEventListener('dragleave', function() {
+            this.classList.remove('drag-over');
+        });
+        
+        column.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            if (draggedItem) {
+                // Verifica qual coluna recebeu o item
+                const newStatus = this.closest('.kanban-column').querySelector('.kanban-column-header h5').textContent.trim();
+                const incId = draggedItem.dataset.id;
+                
+                // Chama a API para atualizar o status
+                updateIncStatus(incId, newStatus);
+                
+                // Visualmente move o item
+                this.appendChild(draggedItem);
+            }
+        });
+    });
+    
+    // Função para atualizar o status da INC via AJAX
+    function updateIncStatus(incId, newStatus) {
+        // Mapeia o título da coluna para o valor do status no banco
+        const statusMap = {
+            'Em andamento': 'Em andamento',
+            'Aguardando Fornecedor': 'Aguardando',
+            'Concluídas': 'Concluída'
+        };
+        
+        const status = statusMap[newStatus] || newStatus;
+        
+        fetch(`/api/update_inc_status/${incId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: status }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(`INC #${data.inc_oc} atualizada para ${status}`, 'success');
+            } else {
+                showToast(`Erro ao atualizar status: ${data.error}`, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Erro ao comunicar com o servidor', 'danger');
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,27 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<h1 class="text-center mb-4">INCs Vencidas</h1>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>NF-e</th>
+            <th>Data</th>
+            <th>Urgência</th>
+            <th>Status</th>
+            <th>Dias de Atraso</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inc, days_overdue in vencidas %}
+        <tr>
+            <td>{{ inc.nf }}</td>
+            <td>{{ inc.data }}</td>
+            <td>{{ inc.urgencia }}</td>
+            <td>{{ inc.status }}</td>
+            <td>{{ days_overdue }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('main_menu') }}" class="btn btn-secondary">Voltar</a>
+{% endblock %}

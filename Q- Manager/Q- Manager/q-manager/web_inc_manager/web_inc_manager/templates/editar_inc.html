@@ -1,0 +1,208 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-edit me-2"></i>Editar INC #{{ inc.nf }}
+            </h5>
+            <div>
+                <a href="{{ url_for('visualizar_incs') }}" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Main form -->
+            <form method="POST" action="{{ url_for('editar_inc', inc_id=inc.id) }}" enctype="multipart/form-data" id="mainForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                Informações Básicas
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="representante" class="form-label">Representante</label>
+                                    <select class="form-select" id="representante" name="representante" required>
+                                        {% for rep in representantes %}
+                                        <option value="{{ rep }}" {% if rep == inc.representante %}selected{% endif %}>{{ rep }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="fornecedor" class="form-label">Fornecedor</label>
+                                    <input type="text" class="form-control" id="fornecedor" name="fornecedor" value="{{ inc.fornecedor }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="item" class="form-label">Item</label>
+                                    <input type="text" class="form-control" id="item" name="item" value="{{ inc.item }}" required>
+                                    <small class="form-text text-muted">Formato: 3 letras maiúsculas, ponto e 5 dígitos (ex: MPR.02199)</small>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="quantidade_recebida" class="form-label">Quantidade Recebida</label>
+                                        <input type="number" class="form-control" id="quantidade_recebida" name="quantidade_recebida" value="{{ inc.quantidade_recebida }}" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="quantidade_com_defeito" class="form-label">Quantidade com Defeito</label>
+                                        <input type="number" class="form-control" id="quantidade_com_defeito" name="quantidade_com_defeito" value="{{ inc.quantidade_com_defeito }}" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                Detalhes da Não-Conformidade
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="descricao_defeito" class="form-label">Descrição do Defeito</label>
+                                    <textarea class="form-control" id="descricao_defeito" name="descricao_defeito" rows="3">{{ inc.descricao_defeito }}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="urgencia" class="form-label">Urgência</label>
+                                    <select class="form-select" id="urgencia" name="urgencia" required>
+                                        <option value="Crítico" {% if inc.urgencia == "Crítico" %}selected{% endif %}>Crítico</option>
+                                        <option value="Moderada" {% if inc.urgencia == "Moderada" %}selected{% endif %}>Moderada</option>
+                                        <option value="Leve" {% if inc.urgencia == "Leve" %}selected{% endif %}>Leve</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="acao_recomendada" class="form-label">Ação Recomendada</label>
+                                    <input type="text" class="form-control" id="acao_recomendada" name="acao_recomendada" value="{{ inc.acao_recomendada }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select class="form-select" id="status" name="status" required>
+                                        <option value="Em andamento" {% if inc.status == "Em andamento" %}selected{% endif %}>Em andamento</option>
+                                        <option value="Concluída" {% if inc.status == "Concluída" %}selected{% endif %}>Concluída</option>
+                                        <option value="Vencida" {% if inc.status == "Vencida" %}selected{% endif %}>Vencida</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fotos -->
+                <div class="card bg-light mb-4">
+                    <div class="card-header">
+                        Fotos da Não-Conformidade
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="fotos" class="form-label">Adicionar Novas Fotos</label>
+                            <input type="file" class="form-control" id="fotos" name="fotos" multiple accept="image/*">
+                            <small class="form-text text-muted">Formatos aceitos: JPG, PNG, GIF. Máximo de 5MB por arquivo.</small>
+                        </div>
+
+                        {% if fotos %}
+                        <label class="form-label">Fotos Existentes</label>
+                        <div class="row">
+                            {% for foto in fotos %}
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card h-100">
+                                    <div class="image-container">
+                                        <img src="{{ url_for('static', filename=foto) }}" class="card-img-top" alt="Foto">
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <form action="{{ url_for('remover_foto_inc', inc_id=inc.id, foto=foto) }}" method="POST">
+                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover esta foto?')">
+                                                <i class="fas fa-trash me-1"></i> Remover
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Nenhuma foto cadastrada.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Regular submit button now uses JavaScript to trigger direct form -->
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('visualizar_incs') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </a>
+                    <button type="button" class="btn btn-primary" id="normalSubmitBtn" onclick="submitDirectForm()">
+                        <i class="fas fa-save me-1"></i> Salvar Alterações
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Alternative direct submission form (now hidden) -->
+            <form action="{{ url_for('editar_inc', inc_id=inc.id) }}" method="POST" enctype="multipart/form-data" id="directForm" style="display:none;">
+                <!-- Hidden fields -->
+                <input type="hidden" name="representante" id="hidden_representante">
+                <input type="hidden" name="fornecedor" id="hidden_fornecedor">
+                <input type="hidden" name="item" id="hidden_item">
+                <input type="hidden" name="quantidade_recebida" id="hidden_quantidade_recebida">
+                <input type="hidden" name="quantidade_com_defeito" id="hidden_quantidade_com_defeito">
+                <input type="hidden" name="descricao_defeito" id="hidden_descricao_defeito">
+                <input type="hidden" name="urgencia" id="hidden_urgencia">
+                <input type="hidden" name="acao_recomendada" id="hidden_acao_recomendada">
+                <input type="hidden" name="status" id="hidden_status">
+                <input type="hidden" name="fotos" id="hidden_fotos">
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Isolated script for direct form submission
+function submitDirectForm() {
+    // Change button to loading state
+    const btn = document.getElementById('normalSubmitBtn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Salvando...';
+    btn.disabled = true;
+    
+    // Copy values from main form to hidden form
+    document.getElementById('hidden_representante').value = document.getElementById('representante').value;
+    document.getElementById('hidden_fornecedor').value = document.getElementById('fornecedor').value;
+    document.getElementById('hidden_item').value = document.getElementById('item').value.toUpperCase();
+    document.getElementById('hidden_quantidade_recebida').value = document.getElementById('quantidade_recebida').value;
+    document.getElementById('hidden_quantidade_com_defeito').value = document.getElementById('quantidade_com_defeito').value;
+    document.getElementById('hidden_descricao_defeito').value = document.getElementById('descricao_defeito').value;
+    document.getElementById('hidden_urgencia').value = document.getElementById('urgencia').value;
+    document.getElementById('hidden_acao_recomendada').value = document.getElementById('acao_recomendada').value;
+    document.getElementById('hidden_status').value = document.getElementById('status').value;
+    
+    // Special handling for files
+    // Clone the file input to the direct form submission
+    const fileInput = document.getElementById('fotos');
+    const hiddenFileInput = document.createElement('input');
+    hiddenFileInput.type = 'file';
+    hiddenFileInput.name = 'fotos';
+    hiddenFileInput.multiple = true;
+    hiddenFileInput.files = fileInput.files;
+    
+    // Append the file input to the direct form
+    if (fileInput.files.length > 0) {
+        document.getElementById('directForm').appendChild(hiddenFileInput);
+    }
+    
+    // Submit the form directly
+    document.getElementById('directForm').submit();
+}
+
+// Extra safety measure - prevent the main form's default submission
+document.addEventListener('DOMContentLoaded', function() {
+    var mainForm = document.getElementById('mainForm');
+    if (mainForm) {
+        mainForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // prevent default form submission
+            submitDirectForm(); // use our direct form instead
+            return false;
+        });
+    }
+});
+</script>
+{% endblock %} 

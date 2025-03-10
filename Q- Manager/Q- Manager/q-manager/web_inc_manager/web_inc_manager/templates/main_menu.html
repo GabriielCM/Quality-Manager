@@ -1,0 +1,397 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <!-- Linha de Resumo -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                INCs Abertas</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_incs_abertas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                INCs Concluídas</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_incs_concluidas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                INCs Vencidas</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_incs_vencidas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Itens Inspecionados</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_inspecionados }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- SUBSTITUIÇÃO: Últimas Rotinas de Inspeção no lugar de INCs por Mês -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history me-1"></i> Últimas Rotinas de Inspeção
+                    </h6>
+                    <a href="{{ url_for('listar_rotinas_inspecao') }}" class="btn btn-sm btn-primary">
+                        Ver Todas
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if ultimas_rotinas %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Inspetor</th>
+                                    <th>Data</th>
+                                    <th>Total de Itens</th>
+                                    <th>Inspecionados</th>
+                                    <th>Adiados</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rotina in ultimas_rotinas %}
+                                <tr>
+                                    <td>{{ rotina.id }}</td>
+                                    <td>{{ rotina.inspetor.username }}</td>
+                                    <td>{{ rotina.data_inspecao.strftime('%d/%m/%Y') }}</td>
+                                    
+                                    {% set registros = rotina.registros|from_json %}
+                                    {% set total = registros|length %}
+                                    {% set inspecionados = registros|selectattr('inspecionado', 'eq', true)|list|length %}
+                                    {% set adiados = registros|selectattr('adiado', 'eq', true)|list|length %}
+                                    
+                                    <td>{{ total }}</td>
+                                    <td>
+                                        <span class="badge bg-success">{{ inspecionados }}</span>
+                                        <span class="text-muted small">({{ (inspecionados / total * 100)|round|int }}%)</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning">{{ adiados }}</span>
+                                        <span class="text-muted small">({{ (adiados / total * 100)|round|int }}%)</span>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#detailModal{{ rotina.id }}">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clipboard-list fa-3x text-gray-300 mb-3"></i>
+                        <p>Nenhuma rotina de inspeção registrada.</p>
+                        <a href="{{ url_for('rotina_inspecao') }}" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-1"></i> Nova Inspeção
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- SUBSTITUIÇÃO: Ranking de Fornecedores com mais INCs no lugar de Distribuição por Urgência -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar me-1"></i> Ranking de Fornecedores
+                    </h6>
+                    <a href="{{ url_for('monitorar_fornecedores') }}" class="btn btn-sm btn-primary">
+                        Ver Detalhes
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if fornecedor_ranking %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Fornecedor</th>
+                                    <th>Total de INCs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fornecedor in fornecedor_ranking %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ fornecedor.nome }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if loop.index == 1 %}danger{% elif loop.index == 2 %}warning{% elif loop.index == 3 %}info{% else %}secondary{% endif %}">
+                                            {{ fornecedor.total_incs }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-bar fa-3x text-gray-300 mb-3"></i>
+                        <p>Nenhum dado disponível.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- NOVA SEÇÃO: Visualização e Busca de Fornecedores -->
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-building me-1"></i> Fornecedores e INCs
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <!-- Filtro de Fornecedores -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Buscar fornecedor..." id="fornecedorSearch">
+                                <button class="btn btn-primary" type="button" id="filterButton">
+                                    <i class="fas fa-search"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de Fornecedores -->
+                    <div class="row" id="fornecedorList">
+                        {% for fornecedor in fornecedores %}
+                        <div class="col-lg-4 col-md-6 mb-4 fornecedor-card">
+                            <div class="card border-left-primary shadow h-100">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">{{ fornecedor.razao_social }}</h6>
+                                    <span class="badge bg-primary">{{ fornecedor.total_incs }} INCs</span>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-1"><strong>CNPJ:</strong> {{ fornecedor.cnpj }}</p>
+                                    <p class="mb-3"><strong>Código Logix:</strong> {{ fornecedor.fornecedor_logix }}</p>
+                                    
+                                    {% if fornecedor.ultimas_incs %}
+                                    <h6 class="text-muted mb-2">Últimas INCs:</h6>
+                                    <ul class="list-group small mb-3">
+                                        {% for inc in fornecedor.ultimas_incs %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                                            <span>{{ inc.item }} ({{ inc.data }})</span>
+                                            <span class="badge bg-{% if inc.status == 'Em andamento' %}primary{% elif inc.status == 'Concluída' %}success{% else %}danger{% endif %}">
+                                                {{ inc.status }}
+                                            </span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <p class="text-muted">Nenhuma INC registrada</p>
+                                    {% endif %}
+                                    
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('monitorar_fornecedores', fornecedor=fornecedor.razao_social) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-chart-line me-1"></i> Monitorar
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Acesso Rápido -->
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-th-large me-1"></i> Acesso Rápido
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ url_for('cadastro_inc') }}" class="card bg-primary text-white shadow text-decoration-none">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-plus-circle fa-3x mb-3"></i>
+                                    <h5>Cadastrar INC</h5>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ url_for('visualizar_incs') }}" class="card bg-info text-white shadow text-decoration-none">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-list fa-3x mb-3"></i>
+                                    <h5>Visualizar INCs</h5>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ url_for('rotina_inspecao') }}" class="card bg-success text-white shadow text-decoration-none">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-clipboard-check fa-3x mb-3"></i>
+                                    <h5>Rotina de Inspeção</h5>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ url_for('monitorar_fornecedores') }}" class="card bg-warning text-white shadow text-decoration-none">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                                    <h5>Monitorar Fornecedores</h5>
+                                </div>
+                            </a>
+                        </div>
+                        {% if current_user.is_admin %}
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ url_for('gerenciar_logins') }}" class="card bg-secondary text-white shadow text-decoration-none">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-users-cog fa-3x mb-3"></i>
+                                    <h5>Gerenciar Logins</h5>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="{{ url_for('editar_layout') }}" class="card bg-dark text-white shadow text-decoration-none">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-palette fa-3x mb-3"></i>
+                                    <h5>Editar Layout</h5>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filtro de fornecedores
+    const searchInput = document.getElementById('fornecedorSearch');
+    const filterButton = document.getElementById('filterButton');
+    const fornecedorCards = document.querySelectorAll('.fornecedor-card');
+    
+    function filterFornecedores() {
+        const searchTerm = searchInput.value.toLowerCase();
+        let found = false;
+        
+        fornecedorCards.forEach(card => {
+            const fornecedorName = card.querySelector('.card-header h6').textContent.toLowerCase();
+            const cnpj = card.querySelector('p:nth-child(1)').textContent.toLowerCase();
+            const codLogix = card.querySelector('p:nth-child(2)').textContent.toLowerCase();
+            
+            if (fornecedorName.includes(searchTerm) || cnpj.includes(searchTerm) || codLogix.includes(searchTerm)) {
+                card.style.display = '';
+                found = true;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Mostrar mensagem se nenhum fornecedor foi encontrado
+        const noResultsElement = document.getElementById('noResultsMessage');
+        if (!found) {
+            if (!noResultsElement) {
+                const message = document.createElement('div');
+                message.id = 'noResultsMessage';
+                message.className = 'col-12 text-center py-4';
+                message.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-search me-2"></i> Nenhum fornecedor encontrado para "${searchTerm}"
+                    </div>
+                `;
+                document.getElementById('fornecedorList').appendChild(message);
+            }
+        } else if (noResultsElement) {
+            noResultsElement.remove();
+        }
+    }
+    
+    // Filtrar ao clicar no botão
+    if (filterButton) {
+        filterButton.addEventListener('click', filterFornecedores);
+    }
+    
+    // Filtrar ao pressionar Enter
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                filterFornecedores();
+            }
+        });
+    }
+    
+    // Efeito de hover nos cards de acesso rápido
+    const accessCards = document.querySelectorAll('.card.shadow');
+    accessCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+            this.style.transition = 'transform 0.3s ease';
+            this.style.boxShadow = '0 10px 20px rgba(0,0,0,0.2)';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '';
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-history me-2"></i>Histórico de Rotinas de Inspeção
+            </h5>
+            <div>
+                <a href="{{ url_for('rotina_inspecao') }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus-circle me-1"></i> Nova Inspeção
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if rotinas %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="dataTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Inspetor</th>
+                            <th>Data de Inspeção</th>
+                            <th>Total de Itens</th>
+                            <th>Inspecionados</th>
+                            <th>Adiados</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rotina in rotinas %}
+                        <tr>
+                            <td>{{ rotina.id }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user me-2 text-primary"></i>
+                                    {{ rotina.inspetor.username }}
+                                </div>
+                            </td>
+                            <td>{{ rotina.data_inspecao.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                            {% set registros = rotina.registros_python %}
+                            {% set total = registros|length %}
+                            {% set inspecionados = registros|selectattr('inspecionado', 'eq', true)|list|length %}
+                            {% set adiados = registros|selectattr('adiado', 'eq', true)|list|length %}
+                            <td>{{ total }}</td>
+                            <td>
+                                <span class="badge bg-success">{{ inspecionados }}</span>
+                                <span class="text-muted">({{ (inspecionados / total * 100)|round|int }}%)</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-warning">{{ adiados }}</span>
+                                <span class="text-muted">({{ (adiados / total * 100)|round|int }}%)</span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detailModal{{ rotina.id }}">
+                                    <i class="fas fa-eye"></i> Detalhes
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Modals de Detalhes -->
+            {% for rotina in rotinas %}
+            <div class="modal fade" id="detailModal{{ rotina.id }}" tabindex="-1" aria-labelledby="detailModalLabel{{ rotina.id }}" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title" id="detailModalLabel{{ rotina.id }}">
+                                <i class="fas fa-clipboard-list me-2"></i>Detalhes da Rotina #{{ rotina.id }}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <strong>Inspetor:</strong> {{ rotina.inspetor.username }}
+                                    </div>
+                                    <div class="mb-3">
+                                        <strong>Data de Inspeção:</strong> {{ rotina.data_inspecao.strftime('%d/%m/%Y %H:%M:%S') }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    {% set registros = rotina.registros_python %}
+                                    {% set total = registros|length %}
+                                    {% set inspecionados = registros|selectattr('inspecionado', 'eq', true)|list|length %}
+                                    {% set adiados = registros|selectattr('adiado', 'eq', true)|list|length %}
+                                    
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Resumo da Inspeção</h6>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>Inspecionados:</span>
+                                                <div>
+                                                    <span class="badge bg-success">{{ inspecionados }}</span>
+                                                    <span class="text-muted">({{ (inspecionados / total * 100)|round|int }}%)</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>Adiados:</span>
+                                                <div>
+                                                    <span class="badge bg-warning">{{ adiados }}</span>
+                                                    <span class="text-muted">({{ (adiados / total * 100)|round|int }}%)</span>
+                                                </div>
+                                            </div>
+                                            <div class="progress mt-3">
+                                                <div class="progress-bar bg-success" role="progressbar" 
+                                                     style="width: {{ inspecionados / total * 100 }}%" 
+                                                     aria-valuenow="{{ inspecionados }}" aria-valuemin="0" aria-valuemax="{{ total }}">
+                                                    {{ (inspecionados / total * 100)|round|int }}%
+                                                </div>
+                                                <div class="progress-bar bg-warning" role="progressbar" 
+                                                     style="width: {{ adiados / total * 100 }}%" 
+                                                     aria-valuenow="{{ adiados }}" aria-valuemin="0" aria-valuemax="{{ total }}">
+                                                    {{ (adiados / total * 100)|round|int }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h6 class="mb-3">Itens Inspecionados:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Descrição</th>
+                                            <th>Fornecedor</th>
+                                            <th>Qtd. Recebida</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% set registros = rotina.registros_python %}
+                                        {% for registro in registros %}
+                                        <tr class="{% if registro.inspecionado %}table-success{% elif registro.adiado %}table-warning{% endif %}">
+                                            <td><strong>{{ registro.item }}</strong></td>
+                                            <td>{{ registro.descricao }}</td>
+                                            <td>{{ registro.fornecedor }}</td>
+                                            <td>{{ registro.qtd_recebida }}</td>
+                                            <td>
+                                                {% if registro.inspecionado %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i> Inspecionado
+                                                </span>
+                                                {% elif registro.adiado %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-clock me-1"></i> Adiado
+                                                </span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-question-circle me-1"></i> Indefinido
+                                                </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-1"></i> Fechar
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="printInspectionReport({{ rotina.id }})">
+                                <i class="fas fa-print me-1"></i> Imprimir Relatório
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle fa-2x me-3"></i>
+                    <div>
+                        <h5 class="alert-heading">Nenhuma rotina de inspeção encontrada</h5>
+                        <p class="mb-0">Clique no botão "Nova Inspeção" para iniciar uma rotina de inspeção.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="text-center mb-4">
+        <a href="{{ url_for('main_menu') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Voltar para o Menu Principal
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar DataTable para pesquisa e paginação
+    if(typeof $.fn.DataTable !== 'undefined') {
+        $('#dataTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json'
+            },
+            order: [[0, 'desc']], // Ordenar por ID em ordem decrescente
+            pageLength: 10
+        });
+    }
+});
+
+// Função para imprimir relatório
+function printInspectionReport(id) {
+    const modalContent = document.querySelector(`#detailModal${id} .modal-content`).cloneNode(true);
+    
+    // Remover os botões do rodapé
+    modalContent.querySelector('.modal-footer').remove();
+    
+    // Criar uma nova janela para impressão
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Relatório de Inspeção #${id}</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                body { padding: 20px; }
+                @media print {
+                    .modal-header { background-color: #0d6efd !important; color: white !important; -webkit-print-color-adjust: exact; }
+                    .table-success { background-color: #d1e7dd !important; -webkit-print-color-adjust: exact; }
+                    .table-warning { background-color: #fff3cd !important; -webkit-print-color-adjust: exact; }
+                    .progress-bar.bg-success { background-color: #198754 !important; -webkit-print-color-adjust: exact; }
+                    .progress-bar.bg-warning { background-color: #ffc107 !important; -webkit-print-color-adjust: exact; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2 class="text-center mb-4">Relatório de Inspeção #${id}</h2>
+                ${modalContent.innerHTML}
+            </div>
+            <script>
+                window.onload = function() { window.print(); }
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+</script>
+{% endblock %}

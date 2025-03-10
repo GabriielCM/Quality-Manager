@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-center mb-4">Cadastrar Fornecedor</h1>
+<form method="POST">
+    <div class="mb-3">
+        <label for="razao_social" class="form-label">Razão Social</label>
+        <input type="text" class="form-control" id="razao_social" name="razao_social" required>
+    </div>
+    <div class="mb-3">
+        <label for="cnpj" class="form-label">CNPJ</label>
+        <input type="text" class="form-control" id="cnpj" name="cnpj" required>
+    </div>
+    <div class="mb-3">
+        <label for="fornecedor_logix" class="form-label">Fornecedor Logix</label>
+        <input type="text" class="form-control" id="fornecedor_logix" name="fornecedor_logix" required>
+    </div>
+    <button type="submit" class="btn btn-success">Cadastrar</button>
+    <a href="{{ url_for('gerenciar_fornecedores') }}" class="btn btn-secondary">Voltar</a>
+</form>
+{% endblock %}

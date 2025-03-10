@@ -1,0 +1,1 @@
+# Módulo de utilitários para o web_inc_manager

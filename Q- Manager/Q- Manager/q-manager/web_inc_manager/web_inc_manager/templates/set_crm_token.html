@@ -1,0 +1,35 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h1 class="text-center mb-4">Importar Token CRM</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="crm_link" class="form-label">Link do CRM</label>
+                            <input type="text" class="form-control" id="crm_link" name="crm_link" required placeholder="Cole o link completo do CRM">
+                            <small class="form-text text-muted">
+                                Copie o link do CRM que contém o token de acesso
+                            </small>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Importar Token</button>
+                            <a href="{{ url_for('rotina_inspecao') }}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="mt-3 text-center">
+                <h5>Como encontrar o token do CRM?</h5>
+                <p class="text-muted">
+                    1. Acesse o CRM e navegue para a página de produtos<br>
+                    2. Copie o link completo da página<br>
+                    3. Cole o link no campo acima
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
