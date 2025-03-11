@@ -41,17 +41,22 @@
                         <i class="fas fa-file-alt me-2"></i>INC
                     </a>
                     <ul class="collapse list-unstyled" id="incSubmenu">
+                        {% if current_user.is_admin or current_user.has_permission('cadastro_inc') %}
                         <li>
                             <a href="{{ url_for('cadastro_inc') }}">Cadastrar INC</a>
                         </li>
+                        {% endif %}
+                        {% if current_user.is_admin or current_user.has_permission('visualizar_incs') %}
                         <li>
                             <a href="{{ url_for('visualizar_incs') }}">Visualizar INCs</a>
                         </li>
                         <li>
                             <a href="{{ url_for('expiracao_inc') }}">INCs Vencidas</a>
                         </li>
+                        {% endif %}
                     </ul>
                 </li>
+                {% if current_user.is_admin or current_user.has_permission('rotina_inspecao') %}
                 <li>
                     <a href="#inspecaoSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                         <i class="fas fa-clipboard-check me-2"></i>Inspeção
@@ -65,16 +70,22 @@
                         </li>
                     </ul>
                 </li>
+                {% endif %}
+                {% if current_user.is_admin or current_user.has_permission('prateleira') %}
                 <li>
                     <a href="{{ url_for('listar_prateleira_nao_conforme') }}">
                         <i class="fas fa-exclamation-triangle me-2"></i>Prateleira Não Conforme
                     </a>
                 </li>
+                {% endif %}
+                {% if current_user.is_admin or current_user.has_permission('fornecedores') %}
                 <li>
                     <a href="{{ url_for('monitorar_fornecedores') }}">
                         <i class="fas fa-chart-bar me-2"></i>Monitorar Fornecedores
                     </a>
                 </li>
+                {% endif %}
+                {% if current_user.is_admin or current_user.has_permission('faturamento') %}
                 <li>
                     <a href="#faturamentoSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                         <i class="fas fa-file-invoice-dollar me-2"></i>Faturamento
@@ -88,6 +99,7 @@
                         </li>
                     </ul>
                 </li>
+                {% endif %}
                 <li>
                     <a href="{{ url_for('gerenciar_fornecedores') }}">
                         <i class="fas fa-building me-2"></i>Gerenciar Fornecedores
@@ -133,12 +145,13 @@
                             </button>
                         </div>
                         
+                        <!-- Dropdown do usuário atualizado -->
                         <div class="dropdown">
                             <button class="btn btn-link dropdown-toggle text-light" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-user-circle me-1"></i> {{ current_user.username }}
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-user-cog me-2"></i>Perfil</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('perfil') }}"><i class="fas fa-user-cog me-2"></i>Meu Perfil</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
                             </ul>

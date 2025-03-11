@@ -10,6 +10,11 @@
                 <a href="{{ url_for('cadastrar_usuario') }}" class="btn btn-primary">
                     <i class="fas fa-user-plus me-1"></i> Cadastrar Novo Usuário
                 </a>
+                {% if has_logs %}
+                <a href="{{ url_for('visualizar_logs_atividade') }}" class="btn btn-info">
+                    <i class="fas fa-history me-1"></i> Logs de Atividades
+                </a>
+                {% endif %}
             </div>
         </div>
         <div class="card-body">
@@ -21,6 +26,13 @@
                         <input type="text" id="userSearchInput" class="form-control" placeholder="Buscar usuário...">
                     </div>
                 </div>
+                <div class="col-md-6">
+                    <div class="btn-group float-end">
+                        <button type="button" class="btn btn-outline-primary" id="filterAllBtn">Todos</button>
+                        <button type="button" class="btn btn-outline-primary" id="filterAdminBtn">Administradores</button>
+                        <button type="button" class="btn btn-outline-primary" id="filterRepBtn">Representantes</button>
+                    </div>
+                </div>
             </div>
             
             <!-- Tabela de Usuários -->
@@ -30,6 +42,7 @@
                         <tr>
                             <th>ID</th>
                             <th>Usuário</th>
+                            <th>Email</th>
                             <th>Perfil</th>
                             <th>Último Login</th>
                             <th>Status</th>
@@ -38,23 +51,36 @@
                     </thead>
                     <tbody>
                         {% for user in users %}
-                        <tr>
+                        <tr data-is-admin="{{ user.is_admin|lower }}" data-is-representante="{{ user.is_representante|lower }}">
                             <td>{{ user.id }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <div class="avatar-circle bg-primary text-white me-2">
+                                    <div class="avatar-circle bg-primary text-white me-2" style="width: 36px; height: 36px; font-size: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                                         {{ user.username[0]|upper }}
                                     </div>
                                     {{ user.username }}
                                 </div>
                             </td>
+                            <td>{{ user.email or "-" }}</td>
                             <td>
-                                <span class="badge {% if user.is_admin %}bg-danger{% else %}bg-info{% endif %}">
-                                    {% if user.is_admin %}Administrador{% else %}Usuário{% endif %}
-                                </span>
+                                {% if user.is_admin %}
+                                <span class="badge bg-danger">Administrador</span>
+                                {% endif %}
+                                
+                                {% if user.is_representante %}
+                                <span class="badge bg-primary">Representante</span>
+                                {% endif %}
+                                
+                                {% if not user.is_admin and not user.is_representante %}
+                                <span class="badge bg-secondary">Usuário Padrão</span>
+                                {% endif %}
                             </td>
                             <td>
-                                <i class="fas fa-clock text-muted me-1"></i> N/A
+                                {% if user.last_login %}
+                                <i class="fas fa-clock text-muted me-1"></i> {{ user.last_login.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                <span class="text-muted"><i class="fas fa-clock me-1"></i> Nunca acessou</span>
+                                {% endif %}
                             </td>
                             <td>
                                 <span class="badge bg-success">Ativo</span>
@@ -101,7 +127,7 @@
 <!-- Modais de Edição -->
 {% for user in users %}
 <div class="modal fade" id="editModal{{ user.id }}" tabindex="-1" aria-labelledby="editModalLabel{{ user.id }}" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST">
                 <div class="modal-header bg-primary text-white">
@@ -114,11 +140,21 @@
                     <input type="hidden" name="user_id" value="{{ user.id }}">
                     <input type="hidden" name="action" value="update">
                     
-                    <div class="mb-3">
-                        <label for="username{{ user.id }}" class="form-label">Nome de Usuário</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-user"></i></span>
-                            <input type="text" class="form-control" id="username{{ user.id }}" value="{{ user.username }}" disabled>
+                    <!-- Informações Básicas -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="username{{ user.id }}" class="form-label">Nome de Usuário</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                <input type="text" class="form-control" id="username{{ user.id }}" value="{{ user.username }}" disabled>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email{{ user.id }}" class="form-label">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" id="email{{ user.id }}" name="email" value="{{ user.email or '' }}">
+                            </div>
                         </div>
                     </div>
                     
@@ -135,9 +171,113 @@
                         <small class="form-text text-muted">Deixe em branco para manter a senha atual</small>
                     </div>
                     
-                    <div class="form-check form-switch">
-                        <input type="checkbox" class="form-check-input" id="is_admin{{ user.id }}" name="is_admin" {% if user.is_admin %}checked{% endif %}>
-                        <label class="form-check-label" for="is_admin{{ user.id }}">Perfil de Administrador</label>
+                    <!-- Tipo de Usuário -->
+                    <div class="card bg-light mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Tipo de Usuário</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-3">
+                                        <input type="checkbox" class="form-check-input is-admin-check" id="is_admin{{ user.id }}" name="is_admin" 
+                                               {% if user.is_admin %}checked{% endif %} data-user-id="{{ user.id }}">
+                                        <label class="form-check-label" for="is_admin{{ user.id }}">
+                                            <strong>Administrador do Sistema</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mb-3">
+                                        <input type="checkbox" class="form-check-input" id="is_representante{{ user.id }}" name="is_representante" 
+                                               {% if user.is_representante %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_representante{{ user.id }}">
+                                            <strong>Representante</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Permissões -->
+                    <div class="card bg-light">
+                        <div class="card-header">
+                            <h6 class="mb-0">Permissões</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="permissoes-info{{ user.id }}" class="alert alert-primary mb-3" {% if not user.is_admin %}style="display: none;"{% endif %}>
+                                <i class="fas fa-info-circle me-2"></i> Administradores têm acesso a todas as funcionalidades por padrão.
+                            </div>
+                            
+                            <div id="permissoes-container{{ user.id }}" {% if user.is_admin %}class="opacity-50"{% endif %}>
+                                {% set permissions = user.permissions|from_json if user.permissions else {} %}
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input permission-check" type="checkbox" id="perm_cadastro_inc{{ user.id }}" 
+                                                   name="perm_cadastro_inc" {% if permissions.get('cadastro_inc') %}checked{% endif %}
+                                                   {% if user.is_admin %}disabled{% endif %}>
+                                            <label class="form-check-label" for="perm_cadastro_inc{{ user.id }}">
+                                                <i class="fas fa-file-alt me-1"></i> Cadastrar INC
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input permission-check" type="checkbox" id="perm_visualizar_incs{{ user.id }}" 
+                                                   name="perm_visualizar_incs" {% if permissions.get('visualizar_incs') %}checked{% endif %}
+                                                   {% if user.is_admin %}disabled{% endif %}>
+                                            <label class="form-check-label" for="perm_visualizar_incs{{ user.id }}">
+                                                <i class="fas fa-list me-1"></i> Visualizar INCs
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input permission-check" type="checkbox" id="perm_rotina_inspecao{{ user.id }}" 
+                                                   name="perm_rotina_inspecao" {% if permissions.get('rotina_inspecao') %}checked{% endif %}
+                                                   {% if user.is_admin %}disabled{% endif %}>
+                                            <label class="form-check-label" for="perm_rotina_inspecao{{ user.id }}">
+                                                <i class="fas fa-clipboard-check me-1"></i> Rotina de Inspeção
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input permission-check" type="checkbox" id="perm_prateleira{{ user.id }}" 
+                                                   name="perm_prateleira" {% if permissions.get('prateleira') %}checked{% endif %}
+                                                   {% if user.is_admin %}disabled{% endif %}>
+                                            <label class="form-check-label" for="perm_prateleira{{ user.id }}">
+                                                <i class="fas fa-exclamation-triangle me-1"></i> Prateleira Não Conforme
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input permission-check" type="checkbox" id="perm_fornecedores{{ user.id }}" 
+                                                   name="perm_fornecedores" {% if permissions.get('fornecedores') %}checked{% endif %}
+                                                   {% if user.is_admin %}disabled{% endif %}>
+                                            <label class="form-check-label" for="perm_fornecedores{{ user.id }}">
+                                                <i class="fas fa-chart-bar me-1"></i> Monitorar Fornecedores
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input permission-check" type="checkbox" id="perm_faturamento{{ user.id }}" 
+                                                   name="perm_faturamento" {% if permissions.get('faturamento') %}checked{% endif %}
+                                                   {% if user.is_admin %}disabled{% endif %}>
+                                            <label class="form-check-label" for="perm_faturamento{{ user.id }}">
+                                                <i class="fas fa-file-invoice-dollar me-1"></i> Solicitação de Faturamento
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -166,6 +306,9 @@
             </div>
             <div class="modal-body">
                 <p>Tem certeza que deseja excluir o usuário <strong id="deleteUserName"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-circle me-2"></i> <strong>Atenção!</strong> Se este usuário for um representante usado em INCs, não será possível excluí-lo.
+                </div>
                 <p class="text-danger">Esta ação não pode ser desfeita e removerá todos os dados associados a este usuário.</p>
             </div>
             <div class="modal-footer">
@@ -187,16 +330,6 @@
 
 {% block scripts %}
 <style>
-    .avatar-circle {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-    }
-    
     .table th {
         position: sticky;
         top: 0;
@@ -227,55 +360,107 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('userSearchInput');
     if (searchInput) {
         searchInput.addEventListener('keyup', function() {
-            const searchValue = this.value.toLowerCase();
-            const table = document.getElementById('usersTable');
-            if (!table) return;
+            filterTable();
+        });
+    }
+    
+    // Filtro por tipo de usuário
+    const filterAllBtn = document.getElementById('filterAllBtn');
+    const filterAdminBtn = document.getElementById('filterAdminBtn');
+    const filterRepBtn = document.getElementById('filterRepBtn');
+    
+    if (filterAllBtn) {
+        filterAllBtn.addEventListener('click', function() {
+            setActiveFilter(this);
+            filterTable('all');
+        });
+    }
+    
+    if (filterAdminBtn) {
+        filterAdminBtn.addEventListener('click', function() {
+            setActiveFilter(this);
+            filterTable('admin');
+        });
+    }
+    
+    if (filterRepBtn) {
+        filterRepBtn.addEventListener('click', function() {
+            setActiveFilter(this);
+            filterTable('rep');
+        });
+    }
+    
+    function setActiveFilter(btn) {
+        document.querySelectorAll('.btn-group .btn').forEach(b => {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-outline-primary');
+        });
+        
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-primary');
+    }
+    
+    // Função para filtrar a tabela
+    function filterTable(filterType = 'all') {
+        const searchValue = searchInput ? searchInput.value.toLowerCase() : '';
+        const table = document.getElementById('usersTable');
+        if (!table) return;
+        
+        const rows = table.getElementsByTagName('tr');
+        
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.getElementsByTagName('td');
             
-            const rows = table.getElementsByTagName('tr');
+            if (!cells.length) continue;
             
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i];
-                const cells = row.getElementsByTagName('td');
-                let found = false;
-                
+            // Verificar filtro de tipo
+            let showByType = true;
+            if (filterType === 'admin') {
+                showByType = row.getAttribute('data-is-admin') === 'true';
+            } else if (filterType === 'rep') {
+                showByType = row.getAttribute('data-is-representante') === 'true';
+            }
+            
+            // Verificar filtro de texto
+            let showByText = false;
+            if (searchValue === '') {
+                showByText = true;
+            } else {
                 for (let j = 0; j < cells.length - 1; j++) {
                     const cellText = cells[j].textContent || cells[j].innerText;
                     if (cellText.toLowerCase().indexOf(searchValue) > -1) {
-                        found = true;
+                        showByText = true;
                         break;
                     }
                 }
-                
-                row.style.display = found ? '' : 'none';
             }
             
-            // Verificar se há resultados visíveis
-            let visibleRows = 0;
-            for (let i = 1; i < rows.length; i++) {
-                if (rows[i].style.display !== 'none') {
-                    visibleRows++;
-                }
+            // Determinar se deve mostrar ou ocultar
+            row.style.display = (showByType && showByText) ? '' : 'none';
+        }
+        
+        // Verificar se há resultados visíveis
+        let visibleRows = Array.from(rows).slice(1).filter(row => row.style.display !== 'none').length;
+        
+        // Mostrar mensagem se não houver resultados
+        let noResultsRow = document.getElementById('noResultsRow');
+        if (visibleRows === 0) {
+            if (!noResultsRow) {
+                noResultsRow = document.createElement('tr');
+                noResultsRow.id = 'noResultsRow';
+                const cell = document.createElement('td');
+                cell.colSpan = rows[0].getElementsByTagName('th').length;
+                cell.className = 'text-center py-4';
+                cell.innerHTML = `<div class="alert alert-warning mb-0">
+                                 <i class="fas fa-search me-2"></i> Nenhum usuário encontrado
+                               </div>`;
+                noResultsRow.appendChild(cell);
+                table.getElementsByTagName('tbody')[0].appendChild(noResultsRow);
             }
-            
-            // Mostrar mensagem se não houver resultados
-            let noResultsRow = document.getElementById('noResultsRow');
-            if (visibleRows === 0) {
-                if (!noResultsRow) {
-                    noResultsRow = document.createElement('tr');
-                    noResultsRow.id = 'noResultsRow';
-                    const cell = document.createElement('td');
-                    cell.colSpan = 6;
-                    cell.className = 'text-center py-4';
-                    cell.innerHTML = `<div class="alert alert-warning mb-0">
-                                     <i class="fas fa-search me-2"></i> Nenhum usuário encontrado para "${searchValue}"
-                                   </div>`;
-                    noResultsRow.appendChild(cell);
-                    table.getElementsByTagName('tbody')[0].appendChild(noResultsRow);
-                }
-            } else if (noResultsRow) {
-                noResultsRow.remove();
-            }
-        });
+        } else if (noResultsRow) {
+            noResultsRow.remove();
+        }
     }
     
     // Toggle de visibilidade de senha
@@ -291,6 +476,32 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 passwordInput.type = 'password';
                 this.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        });
+    });
+    
+    // Toggle de permissões quando marca/desmarca admin
+    const adminChecks = document.querySelectorAll('.is-admin-check');
+    adminChecks.forEach(check => {
+        check.addEventListener('change', function() {
+            const userId = this.getAttribute('data-user-id');
+            const permContainer = document.getElementById(`permissoes-container${userId}`);
+            const permInfo = document.getElementById(`permissoes-info${userId}`);
+            const permChecks = permContainer.querySelectorAll('.permission-check');
+            
+            if (this.checked) {
+                permChecks.forEach(permCheck => {
+                    permCheck.checked = true;
+                    permCheck.disabled = true;
+                });
+                permContainer.classList.add('opacity-50');
+                permInfo.style.display = 'block';
+            } else {
+                permChecks.forEach(permCheck => {
+                    permCheck.disabled = false;
+                });
+                permContainer.classList.remove('opacity-50');
+                permInfo.style.display = 'none';
             }
         });
     });
@@ -322,20 +533,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Validação de formulário
-    const editForms = document.querySelectorAll('form[id^="editForm"]');
-    editForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            const passwordField = this.querySelector('input[name="new_password"]');
-            if (passwordField && passwordField.value !== '') {
-                if (passwordField.value.length < 6) {
-                    e.preventDefault();
-                    showToast('A senha deve ter pelo menos 6 caracteres', 'danger');
-                    return false;
-                }
-            }
-        });
-    });
+    // Ativar botão "Todos" por padrão
+    if (filterAllBtn) {
+        filterAllBtn.click();
+    }
 });
 </script>
 {% endblock %}

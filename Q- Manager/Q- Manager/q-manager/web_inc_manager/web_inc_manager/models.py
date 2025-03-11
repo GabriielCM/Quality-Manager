@@ -1,20 +1,22 @@
 ﻿from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
+import json  # Added import for parsing permissions
 
 db = SQLAlchemy()
-
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(256), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)
 
 class INC(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nf = db.Column(db.Integer, nullable=False, unique=False)
     data = db.Column(db.String(10), nullable=False)
-    representante = db.Column(db.String(100), nullable=False)
+    
+    # Modificação: O representante agora é uma relação com a tabela User
+    representante_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    representante = db.relationship('User', backref=db.backref('incs_representadas', lazy=True))
+    
+    # Manter o campo de texto para compatibilidade com dados existentes
+    representante_nome = db.Column(db.String(100), nullable=True)
+    
     fornecedor = db.Column(db.String(100), nullable=False)
     item = db.Column(db.String(20), nullable=False)
     quantidade_recebida = db.Column(db.Integer, nullable=False)
@@ -91,3 +93,45 @@ class PrateleiraNaoConforme(db.Model):
             delta = datetime.utcnow() - self.data_importacao
             return delta.total_seconds() / 3600
         return 0
+    
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(256), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)  # Novo campo para email
+    is_admin = db.Column(db.Boolean, default=False)
+    is_representante = db.Column(db.Boolean, default=False)  # Novo campo para marcar se é representante
+    permissions = db.Column(db.Text, default='{}')  # JSON para armazenar permissões
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime, nullable=True)
+    
+    # Propriedades para gerenciar permissões
+    def has_permission(self, permission_name):
+        """Verifica se o usuário tem uma permissão específica"""
+        if self.is_admin:  # Administradores têm todas as permissões
+            return True
+        
+        try:
+            perms = json.loads(self.permissions)
+            return perms.get(permission_name, False)
+        except:
+            return False
+
+# Adicione isso ao seu arquivo models.py
+
+class UserActivityLog(db.Model):
+    """Modelo para registrar as ações dos usuários no sistema"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    action = db.Column(db.String(50), nullable=False)  # login, logout, editar, excluir, adicionar, etc.
+    entity_type = db.Column(db.String(50), nullable=False)  # user, inc, fornecedor, etc.
+    entity_id = db.Column(db.Integer, nullable=True)  # ID da entidade afetada
+    details = db.Column(db.Text, nullable=True)  # Detalhes adicionais em formato JSON
+    ip_address = db.Column(db.String(45), nullable=True)  # Suporta tanto IPv4 quanto IPv6
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relacionamento com o usuário
+    user = db.relationship('User', backref=db.backref('activity_logs', lazy=True))
+    
+    def __repr__(self):
+        return f'<UserActivityLog {self.id}: {self.user.username} {self.action} {self.entity_type}>'

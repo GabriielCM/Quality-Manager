@@ -28,8 +28,9 @@
                                 <div class="mb-3">
                                     <label for="representante" class="form-label">Representante</label>
                                     <select class="form-select" id="representante" name="representante" required>
+                                        <option value="">Selecione um representante</option>
                                         {% for rep in representantes %}
-                                        <option value="{{ rep }}">{{ rep }}</option>
+                                        <option value="{{ rep.id }}">{{ rep.username }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>

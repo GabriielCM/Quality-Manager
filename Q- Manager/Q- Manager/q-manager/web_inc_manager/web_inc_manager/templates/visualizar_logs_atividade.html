@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-history me-2"></i>Logs de Atividades
+            </h5>
+            <div>
+                <a href="{{ url_for('gerenciar_logins') }}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar para Usuários
+                </a>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filterModal">
+                    <i class="fas fa-filter me-1"></i> Filtrar
+                </button>
+                <a href="{{ url_for('exportar_logs') }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-file-export me-1"></i> Exportar CSV
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Filtros Rápidos -->
+            <div class="mb-4">
+                <div class="btn-group mb-3">
+                    <a href="{{ url_for('visualizar_logs_atividade') }}" class="btn {% if not request.args.get('action') %}btn-primary{% else %}btn-outline-primary{% endif %}">Todos</a>
+                    <a href="{{ url_for('visualizar_logs_atividade', action='login') }}" class="btn {% if request.args.get('action') == 'login' %}btn-primary{% else %}btn-outline-primary{% endif %}">Logins</a>
+                    <a href="{{ url_for('visualizar_logs_atividade', action='create') }}" class="btn {% if request.args.get('action') == 'create' %}btn-primary{% else %}btn-outline-primary{% endif %}">Criações</a>
+                    <a href="{{ url_for('visualizar_logs_atividade', action='update') }}" class="btn {% if request.args.get('action') == 'update' %}btn-primary{% else %}btn-outline-primary{% endif %}">Edições</a>
+                    <a href="{{ url_for('visualizar_logs_atividade', action='delete') }}" class="btn {% if request.args.get('action') == 'delete' %}btn-primary{% else %}btn-outline-primary{% endif %}">Exclusões</a>
+                </div>
+                
+                {% if request.args %}
+                <div class="alert alert-info">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-filter me-2"></i> Filtros aplicados:
+                            <ul class="mb-0 mt-1">
+                                {% for key, value in request.args.items() %}
+                                    {% if value %}
+                                        <li><strong>{{ key }}:</strong> {{ value }}</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <a href="{{ url_for('visualizar_logs_atividade') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i> Limpar Filtros
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Tabela de Logs -->
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 180px;">Data/Hora</th>
+                            <th scope="col" style="width: 150px;">Usuário</th>
+                            <th scope="col" style="width: 120px;">Ação</th>
+                            <th scope="col" style="width: 120px;">Entidade</th>
+                            <th scope="col">Detalhes</th>
+                            <th scope="col" style="width: 140px;">IP</th>
+                            <th scope="col" style="width: 80px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs.items %}
+                        <tr>
+                            <td>{{ log.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle bg-primary text-white me-2" style="width: 30px; height: 30px; font-size: 12px;">
+                                        {{ log.user.username[0]|upper }}
+                                    </div>
+                                    <a href="{{ url_for('visualizar_logs_atividade', user_id=log.user_id) }}">{{ log.user.username }}</a>
+                                </div>
+                            </td>
+                            <td>
+                                {% if log.action == 'login' %}
+                                <span class="badge bg-success">Login</span>
+                                {% elif log.action == 'logout' %}
+                                <span class="badge bg-secondary">Logout</span>
+                                {% elif log.action == 'create' %}
+                                <span class="badge bg-primary">Criação</span>
+                                {% elif log.action == 'update' %}
+                                <span class="badge bg-info">Edição</span>
+                                {% elif log.action == 'delete' %}
+                                <span class="badge bg-danger">Exclusão</span>
+                                {% elif log.action == 'login_failed' %}
+                                <span class="badge bg-warning">Falha Login</span>
+                                {% else %}
+                                <span class="badge bg-dark">{{ log.action }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.entity_type == 'user' %}
+                                <span class="badge bg-info">Usuário</span>
+                                {% elif log.entity_type == 'inc' %}
+                                <span class="badge bg-primary">INC</span>
+                                {% elif log.entity_type == 'fornecedor' %}
+                                <span class="badge bg-secondary">Fornecedor</span>
+                                {% elif log.entity_type == 'session' %}
+                                <span class="badge bg-dark">Sessão</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark">{{ log.entity_type }}</span>
+                                {% endif %}
+                                {% if log.entity_id %}
+                                <span class="badge bg-light text-dark">#{{ log.entity_id }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.details %}
+                                <button type="button" class="btn btn-sm btn-link view-details" data-bs-toggle="modal" data-bs-target="#detailsModal" data-details="{{ log.details|replace('"', '&quot;') }}">
+                                    <i class="fas fa-eye me-1"></i> Ver Detalhes
+                                </button>
+                                {% else %}
+                                <span class="text-muted">Nenhum detalhe</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.ip_address }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('visualizar_logs_atividade', user_id=log.user_id) }}" class="btn btn-sm btn-outline-primary" title="Filtrar por este usuário">
+                                        <i class="fas fa-user"></i>
+                                    </a>
+                                    <a href="{{ url_for('visualizar_logs_atividade', action=log.action) }}" class="btn btn-sm btn-outline-primary" title="Filtrar por esta ação">
+                                        <i class="fas fa-filter"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginação -->
+            {% if logs.pages > 1 %}
+            <nav aria-label="Navegação de logs">
+                <ul class="pagination justify-content-center mt-4">
+                    <li class="page-item {% if logs.page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('visualizar_logs_atividade', page=logs.prev_num, **request.args) if logs.has_prev else '#' }}">Anterior</a>
+                    </li>
+                    
+                    {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if logs.page == page_num %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('visualizar_logs_atividade', page=page_num, **request.args) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <li class="page-item {% if logs.page == logs.pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('visualizar_logs_atividade', page=logs.next_num, **request.args) if logs.has_next else '#' }}">Próximo</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+            
+            <!-- Mensagem se não houver logs -->
+            {% if logs.items|length == 0 %}
+            <div class="alert alert-info text-center" role="alert">
+                <i class="fas fa-info-circle me-2"></i> Nenhum log de atividade encontrado para os filtros selecionados.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Detalhes do Log</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="jsonViewer" class="p-3 bg-light rounded">
+                    <!-- Conteúdo JSON será exibido aqui -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Filtros -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('visualizar_logs_atividade') }}" method="GET">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="filterModalLabel">Filtrar Logs</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="user_id" class="form-label">Usuário</label>
+                        <select class="form-select" id="user_id" name="user_id">
+                            <option value="">Todos</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {% if request.args.get('user_id')|int == user.id %}selected{% endif %}>{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="action" class="form-label">Ação</label>
+                        <select class="form-select" id="action" name="action">
+                            <option value="">Todas</option>
+                            <option value="login" {% if request.args.get('action') == 'login' %}selected{% endif %}>Login</option>
+                            <option value="logout" {% if request.args.get('action') == 'logout' %}selected{% endif %}>Logout</option>
+                            <option value="create" {% if request.args.get('action') == 'create' %}selected{% endif %}>Criação</option>
+                            <option value="update" {% if request.args.get('action') == 'update' %}selected{% endif %}>Edição</option>
+                            <option value="delete" {% if request.args.get('action') == 'delete' %}selected{% endif %}>Exclusão</option>
+                            <option value="login_failed" {% if request.args.get('action') == 'login_failed' %}selected{% endif %}>Falha de Login</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="entity_type" class="form-label">Tipo de Entidade</label>
+                        <select class="form-select" id="entity_type" name="entity_type">
+                            <option value="">Todos</option>
+                            <option value="user" {% if request.args.get('entity_type') == 'user' %}selected{% endif %}>Usuário</option>
+                            <option value="inc" {% if request.args.get('entity_type') == 'inc' %}selected{% endif %}>INC</option>
+                            <option value="fornecedor" {% if request.args.get('entity_type') == 'fornecedor' %}selected{% endif %}>Fornecedor</option>
+                            <option value="session" {% if request.args.get('entity_type') == 'session' %}selected{% endif %}>Sessão</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="data_inicio" class="form-label">Data Inicial</label>
+                            <input type="date" class="form-control" id="data_inicio" name="data_inicio" value="{{ request.args.get('data_inicio', '') }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="data_fim" class="form-label">Data Final</label>
+                            <input type="date" class="form-control" id="data_fim" name="data_fim" value="{{ request.args.get('data_fim', '') }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ip_address" class="form-label">Endereço IP</label>
+                        <input type="text" class="form-control" id="ip_address" name="ip_address" value="{{ request.args.get('ip_address', '') }}" placeholder="Ex: 192.168.1.1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="{{ url_for('visualizar_logs_atividade') }}" class="btn btn-link">Limpar Filtros</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Formatar visualização de JSON
+    const viewButtons = document.querySelectorAll('.view-details');
+    const jsonViewer = document.getElementById('jsonViewer');
+    
+    viewButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const details = this.getAttribute('data-details');
+            try {
+                const jsonObj = JSON.parse(details);
+                jsonViewer.innerHTML = formatJSON(jsonObj);
+            } catch (e) {
+                jsonViewer.innerHTML = `<div class="alert alert-danger">Erro ao parsear JSON: ${e.message}</div>`;
+                jsonViewer.innerHTML += `<pre>${details}</pre>`;
+            }
+        });
+    });
+    
+    // Função para formatar o JSON de forma amigável
+    function formatJSON(json) {
+        if (typeof json === 'string') {
+            try {
+                json = JSON.parse(json);
+            } catch (e) {
+                return `<pre>${json}</pre>`;
+            }
+        }
+        
+        // Se for um objeto com "changes"
+        if (json && json.changes) {
+            return formatChanges(json);
+        }
+        
+        let html = '<div class="json-tree">';
+        
+        // Recursivamente renderizar o JSON
+        html += formatJSONObject(json);
+        
+        html += '</div>';
+        return html;
+    }
+    
+    // Formatar mudanças (old/new)
+    function formatChanges(json) {
+        let html = '<div class="mb-3">';
+        
+        // Informações gerais
+        if (json.username) {
+            html += `<div class="alert alert-info">
+                <strong>Usuário:</strong> ${json.username}
+                ${json.reason ? `<br><strong>Motivo:</strong> ${json.reason}` : ''}
+            </div>`;
+        }
+        
+        // Alterações
+        if (json.changes) {
+            html += '<h6>Alterações:</h6>';
+            html += '<table class="table table-sm table-bordered">';
+            html += '<thead><tr><th>Campo</th><th>Valor Anterior</th><th>Novo Valor</th></tr></thead>';
+            html += '<tbody>';
+            
+            for (const [field, values] of Object.entries(json.changes)) {
+                html += '<tr>';
+                html += `<td><strong>${field}</strong></td>`;
+                
+                // Valor anterior
+                html += '<td>';
+                if (typeof values.old === 'object' && values.old !== null) {
+                    html += `<pre class="mb-0">${JSON.stringify(values.old, null, 2)}</pre>`;
+                } else if (field === 'password') {
+                    html += '••••••••';
+                } else {
+                    html += values.old;
+                }
+                html += '</td>';
+                
+                // Novo valor
+                html += '<td>';
+                if (typeof values.new === 'object' && values.new !== null) {
+                    html += `<pre class="mb-0">${JSON.stringify(values.new, null, 2)}</pre>`;
+                } else if (field === 'password') {
+                    html += '••••••••';
+                } else {
+                    html += values.new;
+                }
+                html += '</td>';
+                
+                html += '</tr>';
+            }
+            
+            html += '</tbody></table>';
+        }
+        
+        html += '</div>';
+        return html;
+    }
+    
+    // Formatar objeto JSON genérico
+    function formatJSONObject(obj, level = 0) {
+        if (obj === null) return '<span class="text-muted">null</span>';
+        if (obj === undefined) return '<span class="text-muted">undefined</span>';
+        
+        if (typeof obj === 'string') return `<span class="text-success">"${obj}"</span>`;
+        if (typeof obj === 'number') return `<span class="text-primary">${obj}</span>`;
+        if (typeof obj === 'boolean') return `<span class="text-danger">${obj}</span>`;
+        
+        let html = '';
+        const indent = '&nbsp;'.repeat(level * 4);
+        
+        if (Array.isArray(obj)) {
+            if (obj.length === 0) return '[]';
+            
+            html += '[<br>';
+            obj.forEach((item, index) => {
+                html += `${indent}&nbsp;&nbsp;&nbsp;&nbsp;${formatJSONObject(item, level + 1)}`;
+                if (index < obj.length - 1) html += ',';
+                html += '<br>';
+            });
+            html += `${indent}]`;
+            return html;
+        }
+        
+        // Object
+        if (Object.keys(obj).length === 0) return '{}';
+        
+        html += '{<br>';
+        Object.entries(obj).forEach(([key, value], index) => {
+            html += `${indent}&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-info">"${key}"</span>: ${formatJSONObject(value, level + 1)}`;
+            if (index < Object.keys(obj).length - 1) html += ',';
+            html += '<br>';
+        });
+        html += `${indent}}`;
+        return html;
+    }
+    
+    // Validar datas do filtro
+    const dataInicio = document.getElementById('data_inicio');
+    const dataFim = document.getElementById('data_fim');
+    
+    if (dataInicio && dataFim) {
+        dataFim.addEventListener('change', function() {
+            if (dataInicio.value && dataFim.value) {
+                if (new Date(dataFim.value) < new Date(dataInicio.value)) {
+                    showToast('A data final não pode ser menor que a data inicial!', 'warning');
+                    dataFim.value = '';
+                }
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.json-tree {
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.avatar-circle {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+{% endblock %}

@@ -18,7 +18,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import csv
-from models import db, User, INC, LayoutSetting, Fornecedor, RotinaInspecao, SolicitacaoFaturamento, ItemSolicitacaoFaturamento, PrateleiraNaoConforme
+from models import db, User, INC, LayoutSetting, Fornecedor, RotinaInspecao, SolicitacaoFaturamento, ItemSolicitacaoFaturamento, PrateleiraNaoConforme, UserActivityLog
 from config import Config
 
 app = Flask(__name__)
@@ -56,6 +56,49 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+
+# =====================================
+# FUNÇÃO DE LOG DE ATIVIDADES DO USUÁRIO
+# =====================================
+
+def log_user_activity(user_id, action, entity_type, entity_id=None, details=None):
+    """
+    Registra uma ação do usuário no sistema
+    
+    Args:
+        user_id (int): ID do usuário que realizou a ação
+        action (str): Tipo de ação (login, logout, edit, delete, create, etc.)
+        entity_type (str): Tipo de entidade afetada (user, inc, fornecedor, etc.)
+        entity_id (int, optional): ID da entidade afetada
+        details (dict, optional): Detalhes adicionais da ação
+    """
+    try:
+        # Obter endereço IP do cliente
+        ip_address = request.remote_addr
+        
+        # Converter detalhes para JSON se fornecido
+        details_json = None
+        if details:
+            details_json = json.dumps(details, ensure_ascii=False)
+            
+        # Criar o registro de log
+        log_entry = UserActivityLog(
+            user_id=user_id,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            details=details_json,
+            ip_address=ip_address
+        )
+        
+        # Adicionar e confirmar no banco de dados
+        db.session.add(log_entry)
+        db.session.commit()
+        
+    except Exception as e:
+        # Não deixar um erro de log interromper a operação principal
+        app.logger.error(f"Erro ao registrar atividade do usuário: {str(e)}")
+        db.session.rollback()
 
 # Função para visualizar o conteúdo do arquivo
 def display_file_preview(filepath, num_lines=20):
@@ -112,8 +155,8 @@ def diagnosticar_linha_lst(line, linha_numero):
         m2 = item_pattern2.match(line)
         m3 = item_pattern3.search(line)
         
-        app.logger.debug(f"  Padrão 1 ('\s+([A-Z]{{3}}\.\d{{5}})\s+'): {m1.group(1) if m1 else 'Não corresponde'}")
-        app.logger.debug(f"  Padrão 2 ('\s{{20,}}([A-Z]{{3}}\.\d{{5}})'): {m2.group(1) if m2 else 'Não corresponde'}")
+        app.logger.debug(f"  Padrão 1 (r'\\s+([A-Z]{{3}}\\.\\d{{5}})\\s+'): {m1.group(1) if m1 else 'Não corresponde'}")
+        app.logger.debug(f"  Padrão 2 (r'\\s{{20,}}([A-Z]{{3}}\\.\\d{{5}})'): {m2.group(1) if m2 else 'Não corresponde'}")
         app.logger.debug(f"  Padrão 3 (completo): {bool(m3)}")
         
         if m3:
@@ -307,10 +350,42 @@ def login():
         
         if user and check_password_hash(user.password, password):
             login_user(user)
+            
+            # Registrar login do usuário
+            log_user_activity(
+                user_id=user.id,
+                action="login",
+                entity_type="session",
+                details={"method": "form_login", "ip": request.remote_addr}
+            )
+            
+            # Atualizar último login
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            
             next_page = request.args.get('next')
             return redirect(next_page or url_for('main_menu'))
         else:
             flash('Usuário ou senha incorretos.', 'danger')
+            
+            # Registrar tentativa de login malsucedida
+            if user:
+                log_user_activity(
+                    user_id=user.id,
+                    action="login_failed",
+                    entity_type="session",
+                    details={"reason": "invalid_password", "ip": request.remote_addr}
+                )
+            # Mesmo quando o usuário não existe, podemos registrar a tentativa
+            # Isso é útil para detectar varreduras de força bruta
+            else:
+                # Aqui usamos user_id=1 (admin) como padrão para registrar essa tentativa
+                log_user_activity(
+                    user_id=1,  # Assumindo que o ID 1 é o admin
+                    action="login_failed",
+                    entity_type="session",
+                    details={"attempted_username": username, "reason": "user_not_found", "ip": request.remote_addr}
+                )
     else:
         if 'next' in request.args:
             flash('Por favor, faça login para acessar essa página.', 'warning')
@@ -320,6 +395,14 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
+    # Registrar logout
+    log_user_activity(
+        user_id=current_user.id,
+        action="logout",
+        entity_type="session",
+        details={"ip": request.remote_addr}
+    )
+    
     logout_user()
     return redirect(url_for('login'))
 
@@ -377,6 +460,21 @@ def main_menu():
             fornecedor=fornecedor.razao_social
         ).order_by(INC.id.desc()).limit(3).all()
     
+    # Registrar acesso ao menu principal
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="main_menu",
+        details={
+            "stats": {
+                "incs_abertas": total_incs_abertas,
+                "incs_concluidas": total_incs_concluidas,
+                "incs_vencidas": total_incs_vencidas,
+                "total_inspecionados": total_inspecionados
+            }
+        }
+    )
+    
     return render_template('main_menu.html',
                           total_incs_abertas=total_incs_abertas,
                           total_incs_concluidas=total_incs_concluidas,
@@ -386,6 +484,7 @@ def main_menu():
                           fornecedor_ranking=fornecedor_ranking,
                           fornecedores=fornecedores_list)
 
+# Atualizar no app.py - Rota de gerenciamento de logins modificada
 @app.route('/gerenciar_logins', methods=['GET', 'POST'])
 @login_required
 def gerenciar_logins():
@@ -398,20 +497,123 @@ def gerenciar_logins():
         user_id = request.form.get('user_id')
         user = User.query.get_or_404(user_id)
         
+        # Armazenar valores originais para log
+        original_values = {
+            'email': user.email,
+            'is_admin': user.is_admin,
+            'is_representante': user.is_representante,
+            'permissions': json.loads(user.permissions) if user.permissions else {}
+        }
+        
         if action == 'delete' and user.username != current_user.username:
-            db.session.delete(user)
-            db.session.commit()
-            flash('Usuário excluído com sucesso!', 'success')
+            # Verificar se o usuário é um representante em uso
+            incs_com_representante = INC.query.filter_by(representante_id=user.id).count()
+            if incs_com_representante > 0:
+                flash(f'Não é possível excluir este usuário. Ele é representante em {incs_com_representante} INCs.', 'danger')
+            else:
+                # Registrar a exclusão
+                log_user_activity(
+                    user_id=current_user.id,
+                    action="delete",
+                    entity_type="user",
+                    entity_id=user.id,
+                    details={
+                        "username": user.username,
+                        "reason": "user_request"
+                    }
+                )
+                
+                db.session.delete(user)
+                db.session.commit()
+                flash('Usuário excluído com sucesso!', 'success')
         elif action == 'update':
+            # Atualizar informações básicas
+            email = request.form.get('email')
+            is_admin = 'is_admin' in request.form
+            is_representante = 'is_representante' in request.form
+            
+            # Rastrear mudanças para o log
+            changes = {}
+            if email != user.email:
+                changes['email'] = {'old': user.email, 'new': email}
+            if is_admin != user.is_admin:
+                changes['is_admin'] = {'old': user.is_admin, 'new': is_admin}
+            if is_representante != user.is_representante:
+                changes['is_representante'] = {'old': user.is_representante, 'new': is_representante}
+            
+            # Verificar se o email já existe (se fornecido e alterado)
+            if email and email != user.email:
+                existing_user = User.query.filter_by(email=email).first()
+                if existing_user and existing_user.id != user.id:
+                    flash('Email já está em uso por outro usuário.', 'danger')
+                    return redirect(url_for('gerenciar_logins'))
+            
+            # Atualizar senha se fornecida
             new_password = request.form.get('new_password')
             if new_password:
+                if len(new_password) < 6:
+                    flash('A nova senha deve ter pelo menos 6 caracteres.', 'danger')
+                    return redirect(url_for('gerenciar_logins'))
                 user.password = generate_password_hash(new_password)
-            user.is_admin = 'is_admin' in request.form
+                changes['password'] = {'old': '********', 'new': '********'}
+            
+            # Coletar permissões selecionadas
+            permissions = {}
+            for key in request.form:
+                if key.startswith('perm_'):
+                    permission_name = key[5:]  # Remove o prefixo 'perm_'
+                    permissions[permission_name] = True
+            
+            # Se for admin, todas as permissões são concedidas automaticamente
+            if is_admin:
+                # Lista completa de permissões
+                all_permissions = ['cadastro_inc', 'visualizar_incs', 'rotina_inspecao', 
+                                'prateleira', 'fornecedores', 'faturamento']
+                permissions = {perm: True for perm in all_permissions}
+            
+            # Verificar mudanças nas permissões
+            old_permissions = json.loads(user.permissions) if user.permissions else {}
+            if permissions != old_permissions:
+                changes['permissions'] = {'old': old_permissions, 'new': permissions}
+            
+            # Atualizar usuário
+            user.email = email
+            user.is_admin = is_admin
+            user.is_representante = is_representante
+            user.permissions = json.dumps(permissions)
+            
+            # Registrar a atualização, apenas se houve mudanças
+            if changes:
+                log_user_activity(
+                    user_id=current_user.id,
+                    action="update",
+                    entity_type="user",
+                    entity_id=user.id,
+                    details={
+                        "username": user.username,
+                        "changes": changes
+                    }
+                )
+            
             db.session.commit()
             flash('Usuário atualizado com sucesso!', 'success')
     
     users = User.query.all()
-    return render_template('gerenciar_logins.html', users=users)
+    
+    # Preparar lista de funções do sistema para o formulário de permissões
+    system_functions = [
+        {'id': 'cadastro_inc', 'name': 'Cadastrar INC'},
+        {'id': 'visualizar_incs', 'name': 'Visualizar INCs'},
+        {'id': 'rotina_inspecao', 'name': 'Rotina de Inspeção'},
+        {'id': 'prateleira', 'name': 'Prateleira Não Conforme'},
+        {'id': 'fornecedores', 'name': 'Monitorar Fornecedores'},
+        {'id': 'faturamento', 'name': 'Solicitação de Faturamento'},
+    ]
+    
+    # Verificar se há logs para exibir o botão
+    has_logs = UserActivityLog.query.limit(1).count() > 0
+    
+    return render_template('gerenciar_logins.html', users=users, system_functions=system_functions, has_logs=has_logs)
 
 @app.route('/cadastrar_usuario', methods=['GET', 'POST'])
 @login_required
@@ -423,25 +625,161 @@ def cadastrar_usuario():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        confirm_password = request.form.get('confirm_password')
+        email = request.form.get('email')
         is_admin = 'is_admin' in request.form
-
+        is_representante = 'is_representante' in request.form
+        
+        # Validações
+        if password != confirm_password:
+            flash('As senhas não coincidem.', 'danger')
+            return render_template('cadastrar_usuario.html')
+        
+        if len(password) < 6:
+            flash('A senha deve ter pelo menos 6 caracteres.', 'danger')
+            return render_template('cadastrar_usuario.html')
+        
         # Verificar se o usuário já existe
         if User.query.filter_by(username=username).first():
             flash('Nome de usuário já existe. Escolha outro.', 'danger')
             return render_template('cadastrar_usuario.html')
+        
+        # Verificar se o email já existe (se fornecido)
+        if email and User.query.filter_by(email=email).first():
+            flash('Email já está em uso. Escolha outro.', 'danger')
+            return render_template('cadastrar_usuario.html')
+        
+        # Coletar permissões selecionadas
+        permissions = {}
+        for key in request.form:
+            if key.startswith('perm_'):
+                permission_name = key[5:]  # Remove o prefixo 'perm_'
+                permissions[permission_name] = True
+        
+        # Se for admin, todas as permissões são concedidas automaticamente
+        if is_admin:
+            # Lista completa de permissões
+            all_permissions = ['cadastro_inc', 'visualizar_incs', 'rotina_inspecao', 
+                             'prateleira', 'fornecedores', 'faturamento']
+            permissions = {perm: True for perm in all_permissions}
 
         # Criar novo usuário
         new_user = User(
             username=username, 
             password=generate_password_hash(password), 
-            is_admin=is_admin
+            email=email,
+            is_admin=is_admin,
+            is_representante=is_representante,
+            permissions=json.dumps(permissions)
         )
         db.session.add(new_user)
         db.session.commit()
+        
+        # Registrar a criação do usuário
+        log_user_activity(
+            user_id=current_user.id,
+            action="create",
+            entity_type="user",
+            entity_id=new_user.id,
+            details={
+                "username": new_user.username,
+                "email": email,
+                "is_admin": is_admin,
+                "is_representante": is_representante,
+                "permissions": permissions
+            }
+        )
+        
         flash('Usuário cadastrado com sucesso!', 'success')
         return redirect(url_for('gerenciar_logins'))
 
-    return render_template('cadastrar_usuario.html')
+    # Preparar lista de funções do sistema para o formulário de permissões
+    system_functions = [
+        {'id': 'cadastro_inc', 'name': 'Cadastrar INC'},
+        {'id': 'visualizar_incs', 'name': 'Visualizar INCs'},
+        {'id': 'rotina_inspecao', 'name': 'Rotina de Inspeção'},
+        {'id': 'prateleira', 'name': 'Prateleira Não Conforme'},
+        {'id': 'fornecedores', 'name': 'Monitorar Fornecedores'},
+        {'id': 'faturamento', 'name': 'Solicitação de Faturamento'},
+    ]
+    
+    return render_template('cadastrar_usuario.html', system_functions=system_functions)
+
+#Nova rota para perfil de usuário
+@app.route('/perfil', methods=['GET', 'POST'])
+@login_required
+def perfil():
+    user = current_user
+    
+    if request.method == 'POST':
+        # Apenas permitir a atualização de senha
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validações
+        if not current_password or not new_password or not confirm_password:
+            flash('Todos os campos são obrigatórios.', 'danger')
+            return redirect(url_for('perfil'))
+        
+        # Verificar senha atual
+        if not check_password_hash(user.password, current_password):
+            flash('Senha atual incorreta.', 'danger')
+            
+            # Registrar tentativa de alteração de senha malsucedida
+            log_user_activity(
+                user_id=user.id,
+                action="password_change_failed",
+                entity_type="user",
+                entity_id=user.id,
+                details={"reason": "incorrect_current_password"}
+            )
+            
+            return redirect(url_for('perfil'))
+        
+        # Verificar se as senhas coincidem
+        if new_password != confirm_password:
+            flash('As senhas não coincidem.', 'danger')
+            return redirect(url_for('perfil'))
+        
+        # Verificar comprimento mínimo da senha
+        if len(new_password) < 6:
+            flash('A nova senha deve ter pelo menos 6 caracteres.', 'danger')
+            return redirect(url_for('perfil'))
+        
+        # Atualizar senha
+        user.password = generate_password_hash(new_password)
+        db.session.commit()
+        
+        # Registrar alteração de senha
+        log_user_activity(
+            user_id=user.id,
+            action="password_change",
+            entity_type="user",
+            entity_id=user.id,
+            details={"self_initiated": True}
+        )
+        
+        flash('Senha atualizada com sucesso!', 'success')
+        return redirect(url_for('perfil'))
+    
+    # Converter permissões de JSON para dicionário Python
+    try:
+        user_permissions = json.loads(user.permissions) if user.permissions else {}
+    except:
+        user_permissions = {}
+    
+    # Preparar lista de funções do sistema para exibir as permissões
+    system_functions = [
+        {'id': 'cadastro_inc', 'name': 'Cadastrar INC'},
+        {'id': 'visualizar_incs', 'name': 'Visualizar INCs'},
+        {'id': 'rotina_inspecao', 'name': 'Rotina de Inspeção'},
+        {'id': 'prateleira', 'name': 'Prateleira Não Conforme'},
+        {'id': 'fornecedores', 'name': 'Monitorar Fornecedores'},
+        {'id': 'faturamento', 'name': 'Solicitação de Faturamento'},
+    ]
+    
+    return render_template('perfil.html', user=user, permissions=user_permissions, system_functions=system_functions)
 
 @app.route('/editar_layout', methods=['GET', 'POST'])
 @login_required
@@ -457,10 +795,44 @@ def editar_layout():
             setting = LayoutSetting(element=element)
             db.session.add(setting)
             
+        # Salvar valores originais para log
+        original_values = {
+            'foreground': setting.foreground,
+            'background': setting.background,
+            'font_family': setting.font_family,
+            'font_size': setting.font_size
+        }
+        
+        # Novos valores
         setting.foreground = request.form['foreground']
         setting.background = request.form['background']
         setting.font_family = request.form['font_family']
         setting.font_size = int(request.form['font_size'])
+        
+        # Identificar mudanças para o log
+        changes = {}
+        if setting.foreground != original_values['foreground']:
+            changes['foreground'] = {'old': original_values['foreground'], 'new': setting.foreground}
+        if setting.background != original_values['background']:
+            changes['background'] = {'old': original_values['background'], 'new': setting.background}
+        if setting.font_family != original_values['font_family']:
+            changes['font_family'] = {'old': original_values['font_family'], 'new': setting.font_family}
+        if setting.font_size != original_values['font_size']:
+            changes['font_size'] = {'old': original_values['font_size'], 'new': setting.font_size}
+        
+        # Registrar a atualização, apenas se houve mudanças
+        if changes:
+            log_user_activity(
+                user_id=current_user.id,
+                action="update",
+                entity_type="layout",
+                entity_id=setting.id,
+                details={
+                    "element": element,
+                    "changes": changes
+                }
+            )
+        
         db.session.commit()
         flash('Layout atualizado com sucesso!', 'success')
         
@@ -475,6 +847,11 @@ def editar_layout():
 @login_required
 def listar_prateleira_nao_conforme():
     """Lista os itens da prateleira não conforme"""
+    # Verificar se o usuário tem permissão para acessar a página
+    if not current_user.is_admin and not current_user.has_permission('prateleira'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     # Verificar se há dados na prateleira
     itens = PrateleiraNaoConforme.query.order_by(PrateleiraNaoConforme.item).all()
     
@@ -494,6 +871,19 @@ def listar_prateleira_nao_conforme():
     itens_recebimento = [item for item in itens if item.tipo_defeito == "Recebimento"]
     itens_producao = [item for item in itens if item.tipo_defeito == "Produção"]
     
+    # Registrar visualização da prateleira
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="prateleira",
+        details={
+            "items_count": len(itens),
+            "recebimento_count": len(itens_recebimento),
+            "producao_count": len(itens_producao),
+            "valor_total": valor_total
+        }
+    )
+    
     return render_template('prateleira_nao_conforme.html', 
                           itens_recebimento=itens_recebimento,
                           itens_producao=itens_producao,
@@ -505,6 +895,11 @@ def listar_prateleira_nao_conforme():
 @login_required
 def atualizar_prateleira_nao_conforme():
     """Atualiza a prateleira não conforme importando um novo arquivo LST"""
+    # Verificar se o usuário tem permissão para atualizar a prateleira
+    if not current_user.is_admin and not current_user.has_permission('prateleira'):
+        flash('Acesso negado. Você não tem permissão para atualizar a prateleira.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     if request.method == 'POST':
         # Verificar se o arquivo foi enviado
         if 'arquivo_lst' not in request.files:
@@ -549,6 +944,18 @@ def atualizar_prateleira_nao_conforme():
                 db.session.add(item)
             
             db.session.commit()
+            
+            # Registrar a atualização da prateleira
+            log_user_activity(
+                user_id=current_user.id,
+                action="update",
+                entity_type="prateleira",
+                details={
+                    "file": filename,
+                    "items_count": len(itens_processados)
+                }
+            )
+            
             flash(f'Prateleira não conforme atualizada com sucesso! {len(itens_processados)} itens processados.', 'success')
             return redirect(url_for('listar_prateleira_nao_conforme'))
             
@@ -708,8 +1115,40 @@ def api_atualizar_status_prateleira():
                 inc = INC.query.get(item.inc_id)
                 if inc:
                     inc.status = 'Concluída'
-                    db.session.commit()
                     
+                    # Registrar a finalização da INC
+                    log_user_activity(
+                        user_id=current_user.id,
+                        action="update",
+                        entity_type="inc",
+                        entity_id=inc.id,
+                        details={
+                            "changes": {
+                                "status": {
+                                    "old": "Em andamento",
+                                    "new": "Concluída"
+                                }
+                            },
+                            "reason": "finalized_from_prateleira"
+                        }
+                    )
+                    
+                    db.session.commit()
+            
+            # Registrar a finalização do item da prateleira
+            log_user_activity(
+                user_id=current_user.id,
+                action="finalize",
+                entity_type="prateleira_item",
+                entity_id=item.id,
+                details={
+                    "item": item.item,
+                    "quantidade": item.quantidade,
+                    "tipo_defeito": item.tipo_defeito,
+                    "inc_id": item.inc_id
+                }
+            )
+            
             # Remover o item da prateleira
             db.session.delete(item)
             db.session.commit()
@@ -729,13 +1168,34 @@ def api_atualizar_status_prateleira():
 @login_required
 def listar_solicitacoes_faturamento():
     """Exibe a lista de solicitações de faturamento"""
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('faturamento'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     solicitacoes = SolicitacaoFaturamento.query.order_by(SolicitacaoFaturamento.id.desc()).all()
+    
+    # Registrar visualização de solicitações
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="solicitacoes_faturamento",
+        details={
+            "count": len(solicitacoes)
+        }
+    )
+    
     return render_template('listar_solicitacoes_faturamento.html', solicitacoes=solicitacoes)
 
 @app.route('/nova_solicitacao_faturamento', methods=['GET', 'POST'])
 @login_required
 def nova_solicitacao_faturamento():
     """Cria uma nova solicitação de faturamento"""
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('faturamento'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     if request.method == 'POST':
         try:
             # Obter dados do formulário
@@ -781,6 +1241,9 @@ def nova_solicitacao_faturamento():
             db.session.add(solicitacao)
             db.session.flush()  # Para obter o ID da solicitação
             
+            # Preparar detalhes para o log
+            inc_details = []
+            
             # Adicionar itens à solicitação e atualizar status das INCs
             for inc_id in incs_ids:
                 inc = INC.query.get(inc_id)
@@ -801,10 +1264,52 @@ def nova_solicitacao_faturamento():
                     )
                     db.session.add(item)
                     
+                    # Adicionar detalhes para o log
+                    inc_details.append({
+                        'inc_id': inc.id,
+                        'item': inc.item,
+                        'quantidade': quantidade
+                    })
+                    
                     # Atualizar status da INC para "Concluída"
+                    old_status = inc.status
                     inc.status = "Concluída"
+                    
+                    # Registrar a atualização da INC
+                    log_user_activity(
+                        user_id=current_user.id,
+                        action="update",
+                        entity_type="inc",
+                        entity_id=inc.id,
+                        details={
+                            "changes": {
+                                "status": {
+                                    "old": old_status,
+                                    "new": "Concluída"
+                                }
+                            },
+                            "reason": "added_to_faturamento"
+                        }
+                    )
             
             db.session.commit()
+            
+            # Registrar a criação da solicitação
+            log_user_activity(
+                user_id=current_user.id,
+                action="create",
+                entity_type="solicitacao_faturamento",
+                entity_id=solicitacao.id,
+                details={
+                    "numero": novo_numero,
+                    "tipo": tipo,
+                    "fornecedor": fornecedor,
+                    "volumes": volumes,
+                    "tipo_frete": tipo_frete,
+                    "incs": inc_details
+                }
+            )
+            
             flash('Solicitação de faturamento criada com sucesso!', 'success')
             return redirect(url_for('visualizar_solicitacao_faturamento', solicitacao_id=solicitacao.id))
             
@@ -826,13 +1331,36 @@ def nova_solicitacao_faturamento():
 @login_required
 def visualizar_solicitacao_faturamento(solicitacao_id):
     """Visualiza os detalhes de uma solicitação de faturamento"""
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('faturamento'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     solicitacao = SolicitacaoFaturamento.query.get_or_404(solicitacao_id)
+    
+    # Registrar visualização de solicitação
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="solicitacao_faturamento",
+        entity_id=solicitacao_id,
+        details={
+            "numero": solicitacao.numero,
+            "fornecedor": solicitacao.fornecedor
+        }
+    )
+    
     return render_template('visualizar_solicitacao_faturamento.html', solicitacao=solicitacao)
 
 @app.route('/exportar_pdf_solicitacao/<int:solicitacao_id>')
 @login_required
 def exportar_pdf_solicitacao(solicitacao_id):
     """Exporta uma solicitação de faturamento para PDF"""
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('faturamento'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     solicitacao = SolicitacaoFaturamento.query.get_or_404(solicitacao_id)
     
     buffer = BytesIO()
@@ -918,6 +1446,19 @@ def exportar_pdf_solicitacao(solicitacao_id):
     c.drawString(450 - (c.stringWidth("Assinatura Aprovador") / 2), y - 20, "Assinatura Aprovador")
     
     c.save()
+    
+    # Registrar exportação do PDF
+    log_user_activity(
+        user_id=current_user.id,
+        action="export",
+        entity_type="solicitacao_faturamento_pdf",
+        entity_id=solicitacao_id,
+        details={
+            "numero": solicitacao.numero,
+            "format": "pdf"
+        }
+    )
+    
     buffer.seek(0)
     return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name=f'solicitacao_faturamento_{solicitacao.numero}.pdf')
 
@@ -941,6 +1482,17 @@ def api_incs_por_fornecedor(fornecedor):
                 'representante': inc.representante
             })
         
+        # Registrar consulta de INCs por fornecedor
+        log_user_activity(
+            user_id=current_user.id,
+            action="query",
+            entity_type="incs_fornecedor",
+            details={
+                "fornecedor": fornecedor,
+                "count": len(incs_json)
+            }
+        )
+        
         return jsonify({
             'success': True,
             'incs': incs_json
@@ -958,16 +1510,31 @@ def api_incs_por_fornecedor(fornecedor):
 @app.route('/cadastro_inc', methods=['GET', 'POST'])
 @login_required
 def cadastro_inc():
-    representantes = ["Gabriel Rodrigues da Silva", "Marcos Vinicius Gomes Teixeira", "Aleksandro Carvalho Leão"]
+    # Verificar se o usuário tem permissão para cadastrar INC
+    if not current_user.is_admin and not current_user.has_permission('cadastro_inc'):
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    # Buscar representantes (usuários com flag is_representante)
+    representantes = User.query.filter_by(is_representante=True).all()
     fornecedores = Fornecedor.query.all()
 
     if request.method == 'POST':
         nf = int(request.form['nf'])
-        representante = request.form['representante']
+        representante_id = int(request.form['representante'])
         fornecedor = request.form['fornecedor']
         item = request.form['item'].upper()
         quantidade_recebida = int(request.form['quantidade_recebida'])
         quantidade_com_defeito = int(request.form['quantidade_com_defeito'])
+        descricao_defeito = request.form.get('descricao_defeito', '')
+        urgencia = request.form.get('urgencia', 'Moderada')
+        acao_recomendada = request.form.get('acao_recomendada', '')
+
+        # Obter o representante pelo ID
+        representante_user = User.query.get(representante_id)
+        if not representante_user:
+            flash('Representante inválido.', 'danger')
+            return render_template('cadastro_inc.html', representantes=representantes, fornecedores=fornecedores)
 
         if not validate_item_format(item):
             flash('Formato do item inválido. Deve ser 3 letras maiúsculas, ponto e 5 dígitos, ex: MPR.02199', 'danger')
@@ -981,35 +1548,54 @@ def cadastro_inc():
         last_inc = INC.query.order_by(INC.oc.desc()).first()
         new_oc = (last_inc.oc + 1) if last_inc and last_inc.oc else 1
 
-        inc = INC(
-            nf=nf,
-            data=datetime.today().strftime("%d-%m-%Y"),
-            representante=representante,
-            fornecedor=fornecedor,
-            item=item,
-            quantidade_recebida=quantidade_recebida,
-            quantidade_com_defeito=quantidade_com_defeito,
-            descricao_defeito=request.form.get('descricao_defeito', ''),
-            urgencia=request.form.get('urgencia', 'Moderada'),
-            acao_recomendada=request.form.get('acao_recomendada', ''),
-            fotos=json.dumps([]),
-            oc=new_oc,
-            status="Em andamento"
-        )
-
-        # Adicionar fotos, se houver
+        # Capturar fotos, se houver
+        fotos = []
         if 'fotos' in request.files:
             files = request.files.getlist('fotos')
-            fotos = []
             for file in files:
                 if file and file.filename:
                     filepath = save_file(file, ['png', 'jpg', 'jpeg', 'gif'])
                     if filepath:
                         fotos.append(filepath)
-            inc.fotos = json.dumps(fotos)
+
+        # Criar nova INC
+        inc = INC(
+            nf=nf,
+            data=datetime.today().strftime("%d-%m-%Y"),
+            representante_id=representante_id,
+            representante_nome=representante_user.username,
+            fornecedor=fornecedor,
+            item=item,
+            quantidade_recebida=quantidade_recebida,
+            quantidade_com_defeito=quantidade_com_defeito,
+            descricao_defeito=descricao_defeito,
+            urgencia=urgencia,
+            acao_recomendada=acao_recomendada,
+            fotos=json.dumps(fotos),
+            oc=new_oc,
+            status="Em andamento"
+        )
 
         db.session.add(inc)
         db.session.commit()
+        
+        # Registrar a criação da INC
+        log_user_activity(
+            user_id=current_user.id,
+            action="create",
+            entity_type="inc",
+            entity_id=inc.id,
+            details={
+                "nf": nf,
+                "item": item,
+                "fornecedor": fornecedor,
+                "quantidade_com_defeito": quantidade_com_defeito,
+                "representante_id": representante_id,
+                "urgencia": urgencia,
+                "fotos_count": len(fotos)
+            }
+        )
+        
         flash('INC cadastrada com sucesso!', 'success')
         return redirect(url_for('visualizar_incs'))
 
@@ -1018,6 +1604,11 @@ def cadastro_inc():
 @app.route('/visualizar_incs')
 @login_required
 def visualizar_incs():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('visualizar_incs'):
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     # Obter parâmetros de filtro
     nf = request.args.get('nf')
     item = request.args.get('item')
@@ -1042,27 +1633,76 @@ def visualizar_incs():
         page=page, per_page=per_page, error_out=False
     )
     incs = pagination.items
+    
+    # Registrar visualização de INCs (opcional, pode gerar muitos logs)
+    # log_user_activity(
+    #     user_id=current_user.id,
+    #     action="view",
+    #     entity_type="inc_list",
+    #     details={
+    #         "filters": {
+    #             "nf": nf,
+    #             "item": item,
+    #             "fornecedor": fornecedor,
+    #             "status": status
+    #         },
+    #         "page": page,
+    #         "results_count": len(incs)
+    #     }
+    # )
 
     return render_template('visualizar_incs.html', incs=incs, pagination=pagination)
 
 @app.route('/detalhes_inc/<int:inc_id>')
 @login_required
 def detalhes_inc(inc_id):
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('visualizar_incs'):
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     inc = INC.query.get_or_404(inc_id)
     fotos = json.loads(inc.fotos)
+    
+    # Registrar visualização detalhada de INC
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="inc",
+        entity_id=inc.id,
+        details={
+            "nf": inc.nf,
+            "item": inc.item
+        }
+    )
+    
     return render_template('detalhes_inc.html', inc=inc, fotos=fotos)
 
 @app.route('/editar_inc/<int:inc_id>', methods=['GET', 'POST'])
 @login_required
 def editar_inc(inc_id):
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('cadastro_inc'):
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     inc = INC.query.get_or_404(inc_id)
     representantes = ["Gabriel Rodrigues da Silva", "Marcos Vinicius Gomes Teixeira", "Aleksandro Carvalho Leão"]
     fotos = json.loads(inc.fotos) if inc.fotos else []
 
     if request.method == 'POST':
-        # Debug output
-        print(f"POST request received to edit INC #{inc_id}")
-        print(f"Form data: {request.form}")
+        # Salvar valores originais para o log
+        original_values = {
+            'item': inc.item,
+            'representante': inc.representante,
+            'fornecedor': inc.fornecedor,
+            'quantidade_recebida': inc.quantidade_recebida,
+            'quantidade_com_defeito': inc.quantidade_com_defeito,
+            'descricao_defeito': inc.descricao_defeito,
+            'urgencia': inc.urgencia, 
+            'acao_recomendada': inc.acao_recomendada,
+            'status': inc.status
+        }
         
         # Get form data
         item = request.form['item'].upper()
@@ -1074,6 +1714,27 @@ def editar_inc(inc_id):
         urgencia = request.form['urgencia']
         acao_recomendada = request.form['acao_recomendada']
         status = request.form['status']
+        
+        # Rastrear mudanças para o log
+        changes = {}
+        if item != inc.item:
+            changes['item'] = {'old': inc.item, 'new': item}
+        if representante != inc.representante:
+            changes['representante'] = {'old': inc.representante, 'new': representante}
+        if fornecedor != inc.fornecedor:
+            changes['fornecedor'] = {'old': inc.fornecedor, 'new': fornecedor}
+        if quantidade_recebida != inc.quantidade_recebida:
+            changes['quantidade_recebida'] = {'old': inc.quantidade_recebida, 'new': quantidade_recebida}
+        if quantidade_com_defeito != inc.quantidade_com_defeito:
+            changes['quantidade_com_defeito'] = {'old': inc.quantidade_com_defeito, 'new': quantidade_com_defeito}
+        if descricao_defeito != inc.descricao_defeito:
+            changes['descricao_defeito'] = {'old': inc.descricao_defeito, 'new': descricao_defeito}
+        if urgencia != inc.urgencia:
+            changes['urgencia'] = {'old': inc.urgencia, 'new': urgencia}
+        if acao_recomendada != inc.acao_recomendada:
+            changes['acao_recomendada'] = {'old': inc.acao_recomendada, 'new': acao_recomendada}
+        if status != inc.status:
+            changes['status'] = {'old': inc.status, 'new': status}
         
         # Validate data
         valid = True
@@ -1101,6 +1762,7 @@ def editar_inc(inc_id):
         inc.status = status
 
         # Process new photos
+        new_fotos_added = 0
         if 'fotos' in request.files:
             files = request.files.getlist('fotos')
             for file in files:
@@ -1108,8 +1770,26 @@ def editar_inc(inc_id):
                     filepath = save_file(file, ['png', 'jpg', 'jpeg', 'gif'])
                     if filepath:
                         fotos.append(filepath)
+                        new_fotos_added += 1
 
         inc.fotos = json.dumps(fotos)
+        
+        # Registrar a edição da INC
+        if changes or new_fotos_added > 0:
+            if new_fotos_added > 0:
+                changes['fotos'] = {'action': 'added', 'count': new_fotos_added}
+                
+            log_user_activity(
+                user_id=current_user.id,
+                action="update",
+                entity_type="inc",
+                entity_id=inc.id,
+                details={
+                    "nf": inc.nf,
+                    "item": inc.item,
+                    "changes": changes
+                }
+            )
         
         # Save changes to database
         try:
@@ -1127,6 +1807,11 @@ def editar_inc(inc_id):
 @app.route('/remover_foto_inc/<int:inc_id>/<path:foto>', methods=['POST'])
 @login_required
 def remover_foto_inc(inc_id, foto):
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('cadastro_inc'):
+        flash('Você não tem permissão para realizar esta ação.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     inc = INC.query.get_or_404(inc_id)
     fotos = json.loads(inc.fotos) if inc.fotos else []
     
@@ -1150,6 +1835,19 @@ def remover_foto_inc(inc_id, foto):
             except Exception as e:
                 print(f"Erro ao remover arquivo: {e}")
             
+            # Registrar a remoção da foto
+            log_user_activity(
+                user_id=current_user.id,
+                action="delete",
+                entity_type="inc_photo",
+                entity_id=inc_id,
+                details={
+                    "foto": foto,
+                    "inc_nf": inc.nf,
+                    "inc_item": inc.item
+                }
+            )
+            
             break
     
     # Atualizar o campo de fotos na INC
@@ -1162,12 +1860,35 @@ def remover_foto_inc(inc_id, foto):
 @app.route('/excluir_inc/<int:inc_id>', methods=['POST'])
 @login_required
 def excluir_inc(inc_id):
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('cadastro_inc'):
+        flash('Você não tem permissão para realizar esta ação.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     inc = INC.query.get_or_404(inc_id)
+    
+    # Salvar informações para o log antes de excluir
+    inc_info = {
+        "nf": inc.nf,
+        "item": inc.item,
+        "fornecedor": inc.fornecedor,
+        "data": inc.data,
+        "status": inc.status
+    }
     
     # Remover fotos associadas
     fotos = json.loads(inc.fotos) if inc.fotos else []
     for foto in fotos:
         remove_file(foto)
+    
+    # Registrar a exclusão da INC antes de excluí-la
+    log_user_activity(
+        user_id=current_user.id,
+        action="delete",
+        entity_type="inc",
+        entity_id=inc_id,
+        details=inc_info
+    )
     
     db.session.delete(inc)
     db.session.commit()
@@ -1177,6 +1898,11 @@ def excluir_inc(inc_id):
 @app.route('/expiracao_inc')
 @login_required
 def expiracao_inc():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('visualizar_incs'):
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     incs = INC.query.all()
     today = datetime.today().date()
     vencidas = []
@@ -1187,11 +1913,27 @@ def expiracao_inc():
         if today > expiration_date:
             days_overdue = (today - expiration_date).days
             vencidas.append((inc, days_overdue))
+    
+    # Registrar a visualização de INCs vencidas
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="vencidas",
+        details={
+            "total_vencidas": len(vencidas)
+        }
+    )
+    
     return render_template('expiracao_inc.html', vencidas=vencidas)
 
 @app.route('/print_inc_label/<int:inc_id>')
 @login_required
 def print_inc_label(inc_id):
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('cadastro_inc'):
+        flash('Você não tem permissão para realizar esta ação.', 'danger')
+        return redirect(url_for('main_menu'))
+    
     inc = INC.query.get_or_404(inc_id)
     
     # Função para sanitizar texto para ZPL
@@ -1302,6 +2044,19 @@ def print_inc_label(inc_id):
             s.send(zpl.encode('ascii', errors='replace'))
             logging.debug("ZPL enviado com sucesso")
         
+        # Registrar impressão de etiqueta
+        log_user_activity(
+            user_id=current_user.id,
+            action="print",
+            entity_type="inc_label",
+            entity_id=inc.id,
+            details={
+                "nf": inc.nf,
+                "item": inc.item,
+                "printer": f"{printer_ip}:{printer_port}"
+            }
+        )
+        
         flash('Etiqueta enviada para impressão!', 'success')
     except socket.error as e:
         logging.error(f"Erro de socket: {str(e)}")
@@ -1311,9 +2066,15 @@ def print_inc_label(inc_id):
         flash(f'Erro ao imprimir: {str(e)}', 'danger')
 
     return redirect(url_for('detalhes_inc', inc_id=inc_id))
+
 @app.route('/export_csv')
 @login_required
 def export_csv():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('visualizar_incs'):
+        flash('Você não tem permissão para exportar dados.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     incs = INC.query.all()
     output = BytesIO()
     writer = csv.writer(output)
@@ -1324,12 +2085,29 @@ def export_csv():
         writer.writerow([inc.nf, inc.data, inc.representante, inc.fornecedor, inc.item, 
                          inc.quantidade_recebida, inc.quantidade_com_defeito, inc.descricao_defeito, 
                          inc.urgencia, inc.acao_recomendada, inc.status, inc.oc])
+    
+    # Registrar exportação
+    log_user_activity(
+        user_id=current_user.id,
+        action="export",
+        entity_type="inc_csv",
+        details={
+            "record_count": len(incs),
+            "format": "csv"
+        }
+    )
+    
     output.seek(0)
     return send_file(output, mimetype='text/csv', as_attachment=True, download_name='incs.csv')
 
 @app.route('/export_pdf/<int:inc_id>')
 @login_required
 def export_pdf(inc_id):
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('visualizar_incs'):
+        flash('Você não tem permissão para exportar dados.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     inc = INC.query.get_or_404(inc_id)
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
@@ -1366,12 +2144,31 @@ def export_pdf(inc_id):
                         c.showPage()
                         y = height - 220
     c.save()
+    
+    # Registrar exportação
+    log_user_activity(
+        user_id=current_user.id,
+        action="export",
+        entity_type="inc_pdf",
+        entity_id=inc.id,
+        details={
+            "nf": inc.nf,
+            "item": inc.item,
+            "format": "pdf"
+        }
+    )
+    
     buffer.seek(0)
     return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name=f'inc_{inc.nf}.pdf')
 
 @app.route('/monitorar_fornecedores', methods=['GET', 'POST'])
 @login_required
 def monitorar_fornecedores():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('fornecedores'):
+        flash('Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     fornecedores = Fornecedor.query.all()
     incs = []
     graph_url = None  # Inicializar graph_url como None
@@ -1381,6 +2178,21 @@ def monitorar_fornecedores():
         item = request.form.get('item')
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
+
+        # Registrar o monitoramento
+        log_user_activity(
+            user_id=current_user.id,
+            action="monitor",
+            entity_type="fornecedor",
+            details={
+                "fornecedor": fornecedor,
+                "item": item,
+                "period": {
+                    "start": start_date,
+                    "end": end_date
+                }
+            }
+        )
 
         # Construir consulta com filtros
         query = INC.query
@@ -1426,6 +2238,11 @@ def monitorar_fornecedores():
 @app.route('/export_monitor_pdf', methods=['GET'])
 @login_required
 def export_monitor_pdf():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('fornecedores'):
+        flash('Você não tem permissão para exportar dados.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     fornecedor = request.args.get('fornecedor')
     item = request.args.get('item')
     start_date = request.args.get('start_date')
@@ -1448,6 +2265,23 @@ def export_monitor_pdf():
     if not incs:
         flash('Nenhum dado para exportar', 'warning')
         return redirect(url_for('monitorar_fornecedores'))
+
+    # Registrar exportação
+    log_user_activity(
+        user_id=current_user.id,
+        action="export",
+        entity_type="fornecedor_report",
+        details={
+            "fornecedor": fornecedor,
+            "item": item,
+            "period": {
+                "start": start_date,
+                "end": end_date
+            },
+            "record_count": len(incs),
+            "format": "pdf"
+        }
+    )
 
     # Criar arquivo temporário
     temp_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_graph.png')
@@ -1518,6 +2352,18 @@ def fornecedor_incs(fornecedor_id):
     # Buscar todas as INCs relacionadas a este fornecedor
     incs = INC.query.filter_by(fornecedor=fornecedor.razao_social).order_by(INC.id.desc()).all()
     
+    # Registrar a consulta de INCs do fornecedor
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="fornecedor_incs",
+        entity_id=fornecedor_id,
+        details={
+            "fornecedor": fornecedor.razao_social,
+            "total_incs": len(incs)
+        }
+    )
+    
     # Converter para formato JSON
     incs_json = []
     for inc in incs:
@@ -1559,13 +2405,60 @@ def gerenciar_fornecedores():
         fornecedor = Fornecedor.query.get_or_404(fornecedor_id) if fornecedor_id else None
 
         if action == 'delete':
+            # Registrar a exclusão do fornecedor
+            log_user_activity(
+                user_id=current_user.id,
+                action="delete",
+                entity_type="fornecedor",
+                entity_id=fornecedor.id,
+                details={
+                    "razao_social": fornecedor.razao_social,
+                    "cnpj": fornecedor.cnpj,
+                    "fornecedor_logix": fornecedor.fornecedor_logix
+                }
+            )
+            
             db.session.delete(fornecedor)
             db.session.commit()
             flash('Fornecedor excluído com sucesso!', 'success')
         elif action == 'update':
-            fornecedor.razao_social = request.form['razao_social']
-            fornecedor.cnpj = request.form['cnpj']
-            fornecedor.fornecedor_logix = request.form['fornecedor_logix']
+            # Salvar valores originais para o log
+            original_values = {
+                'razao_social': fornecedor.razao_social,
+                'cnpj': fornecedor.cnpj,
+                'fornecedor_logix': fornecedor.fornecedor_logix
+            }
+            
+            # Novos valores
+            razao_social = request.form['razao_social']
+            cnpj = request.form['cnpj']
+            fornecedor_logix = request.form['fornecedor_logix']
+            
+            # Identificar mudanças para o log
+            changes = {}
+            if razao_social != fornecedor.razao_social:
+                changes['razao_social'] = {'old': fornecedor.razao_social, 'new': razao_social}
+            if cnpj != fornecedor.cnpj:
+                changes['cnpj'] = {'old': fornecedor.cnpj, 'new': cnpj}
+            if fornecedor_logix != fornecedor.fornecedor_logix:
+                changes['fornecedor_logix'] = {'old': fornecedor.fornecedor_logix, 'new': fornecedor_logix}
+            
+            fornecedor.razao_social = razao_social
+            fornecedor.cnpj = cnpj
+            fornecedor.fornecedor_logix = fornecedor_logix
+            
+            # Registrar a atualização, apenas se houve mudanças
+            if changes:
+                log_user_activity(
+                    user_id=current_user.id,
+                    action="update",
+                    entity_type="fornecedor",
+                    entity_id=fornecedor.id,
+                    details={
+                        "changes": changes
+                    }
+                )
+            
             db.session.commit()
             flash('Fornecedor atualizado com sucesso!!', 'success')
 
@@ -1602,6 +2495,20 @@ def cadastrar_fornecedor():
         )
         db.session.add(fornecedor)
         db.session.commit()
+        
+        # Registrar a criação do fornecedor
+        log_user_activity(
+            user_id=current_user.id,
+            action="create",
+            entity_type="fornecedor",
+            entity_id=fornecedor.id,
+            details={
+                "razao_social": razao_social,
+                "cnpj": cnpj,
+                "fornecedor_logix": fornecedor_logix
+            }
+        )
+        
         flash('Fornecedor cadastrado com sucesso!', 'success')
         return redirect(url_for('gerenciar_fornecedores'))
 
@@ -1614,6 +2521,11 @@ def cadastrar_fornecedor():
 @app.route('/set_crm_token', methods=['GET', 'POST'])
 @login_required
 def set_crm_token():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     if request.method == 'POST':
         crm_link = request.form['crm_link']
         token_match = re.search(r'token=([a-f0-9]+)', crm_link)
@@ -1622,6 +2534,18 @@ def set_crm_token():
             token = token_match.group(1)
             session['crm_token'] = token
             session['inspecao_crm_token'] = token  # Atualiza o token da inspeção também
+            
+            # Registrar atualização do token CRM
+            log_user_activity(
+                user_id=current_user.id,
+                action="update",
+                entity_type="crm_token",
+                details={
+                    "token_updated": True,
+                    "token_prefix": token[:4] + "..." if token else "none"  # Apenas para referência, não registrar token completo
+                }
+            )
+            
             flash('Token CRM atualizado com sucesso!', 'success')
             return redirect(url_for('visualizar_registros_inspecao'))
         else:
@@ -1638,6 +2562,17 @@ def api_historico_incs(item):
     
     # Buscar histórico de INCs para este item
     incs = INC.query.filter_by(item=item).order_by(INC.id.desc()).all()
+    
+    # Registrar consulta de histórico do item
+    log_user_activity(
+        user_id=current_user.id,
+        action="query",
+        entity_type="item_history",
+        details={
+            "item": item,
+            "count": len(incs)
+        }
+    )
     
     # Converter para JSON
     incs_json = []
@@ -1665,6 +2600,11 @@ def api_historico_incs(item):
 @app.route('/rotina_inspecao', methods=['GET', 'POST'])
 @login_required
 def rotina_inspecao():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     # Verificar se o token CRM está definido
     if 'crm_token' not in session:
         flash('Você precisa importar o token do CRM primeiro.', 'warning')
@@ -1702,6 +2642,18 @@ def rotina_inspecao():
                 session['inspecao_registros'] = registros
                 # Armazenar o token CRM atual com os registros
                 session['inspecao_crm_token'] = session['crm_token']
+                
+                # Registrar importação da rotina
+                log_user_activity(
+                    user_id=current_user.id,
+                    action="import",
+                    entity_type="rotina_inspecao",
+                    details={
+                        "file": filename,
+                        "registros_count": len(registros)
+                    }
+                )
+                
                 flash(f'Foram importados {len(registros)} registros.', 'success')
                 return redirect(url_for('visualizar_registros_inspecao'))
             else:
@@ -1724,6 +2676,11 @@ def rotina_inspecao():
 @app.route('/visualizar_registros_inspecao', methods=['GET', 'POST'])
 @login_required
 def visualizar_registros_inspecao():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     registros = session.get('inspecao_registros', [])
     
     if not registros:
@@ -1745,10 +2702,36 @@ def visualizar_registros_inspecao():
             if action == 'inspecionar':
                 registros[registro_global_index]['inspecionado'] = True
                 registros[registro_global_index]['adiado'] = False
+                
+                # Registrar inspeção de item
+                log_user_activity(
+                    user_id=current_user.id,
+                    action="inspect",
+                    entity_type="item_inspecao",
+                    details={
+                        "item": registros[registro_global_index]["item"],
+                        "status": "inspecionado",
+                        "aviso": ar
+                    }
+                )
+                
                 flash(f'Item {registros[registro_global_index]["item"]} marcado como inspecionado.', 'success')
             elif action == 'adiar':
                 registros[registro_global_index]['inspecionado'] = False
                 registros[registro_global_index]['adiado'] = True
+                
+                # Registrar adiamento de item
+                log_user_activity(
+                    user_id=current_user.id,
+                    action="inspect",
+                    entity_type="item_inspecao",
+                    details={
+                        "item": registros[registro_global_index]["item"],
+                        "status": "adiado",
+                        "aviso": ar
+                    }
+                )
+                
                 flash(f'Item {registros[registro_global_index]["item"]} marcado como adiado.', 'warning')
             session['inspecao_registros'] = registros
     
@@ -1772,15 +2755,36 @@ def visualizar_registros_inspecao():
 @app.route('/listar_rotinas_inspecao')
 @login_required
 def listar_rotinas_inspecao():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     rotinas = RotinaInspecao.query.all()
     # Converter registros de JSON para Python para cada rotina
     for rotina in rotinas:
         rotina.registros_python = json.loads(rotina.registros)
+    
+    # Registrar visualização das rotinas
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="rotinas_inspecao",
+        details={
+            "count": len(rotinas)
+        }
+    )
+    
     return render_template('listar_rotinas_inspecao.html', rotinas=rotinas)
 
 @app.route('/salvar_rotina_inspecao', methods=['POST'])
 @login_required
 def salvar_rotina_inspecao():
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Você não tem permissão para realizar esta ação.', 'danger')
+        return redirect(url_for('main_menu'))
+        
     registros = session.get('inspecao_registros', [])
     
     if not registros:
@@ -1795,6 +2799,10 @@ def salvar_rotina_inspecao():
             flash('Todos os registros devem ser inspecionados ou adiados antes de salvar a rotina.', 'danger')
             return redirect(url_for('visualizar_registros_inspecao'))
     
+    # Estatísticas para o log
+    inspecionados = sum(1 for r in registros if r.get('inspecionado', False))
+    adiados = sum(1 for r in registros if r.get('adiado', False))
+    
     rotina = RotinaInspecao(
         inspetor_id=current_user.id,
         registros=json.dumps(registros)
@@ -1802,9 +2810,150 @@ def salvar_rotina_inspecao():
     db.session.add(rotina)
     db.session.commit()
     
+    # Registrar a criação da rotina
+    log_user_activity(
+        user_id=current_user.id,
+        action="create",
+        entity_type="rotina_inspecao",
+        entity_id=rotina.id,
+        details={
+            "registros_count": len(registros),
+            "inspecionados_count": inspecionados,
+            "adiados_count": adiados
+        }
+    )
+    
     flash('Rotina de inspeção salva com sucesso!', 'success')
     session.pop('inspecao_registros', None)
     return redirect(url_for('main_menu'))
+
+# =====================================
+# ROTAS PARA LOGS DE ATIVIDADE
+# =====================================
+
+@app.route('/visualizar_logs_atividade')
+@login_required
+def visualizar_logs_atividade():
+    """Visualiza os logs de atividades dos usuários"""
+    if not current_user.is_admin:
+        flash('Acesso negado. Apenas administradores podem visualizar logs.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    # Obter parâmetros de filtro
+    user_id = request.args.get('user_id', type=int)
+    action = request.args.get('action')
+    entity_type = request.args.get('entity_type')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    ip_address = request.args.get('ip_address')
+    page = request.args.get('page', 1, type=int)
+    per_page = app.config.get('ITEMS_PER_PAGE', 15)
+    
+    # Construir consulta com filtros
+    query = UserActivityLog.query
+    
+    if user_id:
+        query = query.filter_by(user_id=user_id)
+    if action:
+        query = query.filter_by(action=action)
+    if entity_type:
+        query = query.filter_by(entity_type=entity_type)
+    if ip_address:
+        query = query.filter(UserActivityLog.ip_address.like(f'%{ip_address}%'))
+    
+    # Aplicar filtros de data
+    if data_inicio:
+        data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d')
+        query = query.filter(UserActivityLog.timestamp >= data_inicio_obj)
+    if data_fim:
+        data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d')
+        # Incluir todo o dia final (até 23:59:59)
+        data_fim_obj = data_fim_obj.replace(hour=23, minute=59, second=59)
+        query = query.filter(UserActivityLog.timestamp <= data_fim_obj)
+    
+    # Ordenar por data/hora decrescente (mais recentes primeiro)
+    query = query.order_by(UserActivityLog.timestamp.desc())
+    
+    # Paginar resultados
+    pagination = query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Obter lista de usuários para o filtro
+    users = User.query.all()
+    
+    return render_template('visualizar_logs_atividade.html', 
+                          logs=pagination, 
+                          users=users)
+
+@app.route('/exportar_logs')
+@login_required
+def exportar_logs():
+    """Exporta os logs para CSV"""
+    if not current_user.is_admin:
+        flash('Acesso negado. Apenas administradores podem exportar logs.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    # Obter parâmetros de filtro (igual à visualização)
+    user_id = request.args.get('user_id', type=int)
+    action = request.args.get('action')
+    entity_type = request.args.get('entity_type')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    ip_address = request.args.get('ip_address')
+    
+    # Construir consulta com filtros
+    query = UserActivityLog.query
+    
+    if user_id:
+        query = query.filter_by(user_id=user_id)
+    if action:
+        query = query.filter_by(action=action)
+    if entity_type:
+        query = query.filter_by(entity_type=entity_type)
+    if ip_address:
+        query = query.filter(UserActivityLog.ip_address.like(f'%{ip_address}%'))
+    
+    # Aplicar filtros de data
+    if data_inicio:
+        data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d')
+        query = query.filter(UserActivityLog.timestamp >= data_inicio_obj)
+    if data_fim:
+        data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d')
+        data_fim_obj = data_fim_obj.replace(hour=23, minute=59, second=59)
+        query = query.filter(UserActivityLog.timestamp <= data_fim_obj)
+    
+    # Ordenar por data/hora decrescente
+    logs = query.order_by(UserActivityLog.timestamp.desc()).all()
+    
+    # Criar CSV em memória
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Cabeçalho
+    writer.writerow(['ID', 'Data/Hora', 'Usuário', 'Ação', 'Tipo Entidade', 'ID Entidade', 
+                    'Detalhes', 'Endereço IP'])
+    
+    # Dados
+    for log in logs:
+        writer.writerow([
+            log.id,
+            log.timestamp.strftime('%d/%m/%Y %H:%M:%S'),
+            log.user.username,
+            log.action,
+            log.entity_type,
+            log.entity_id,
+            log.details,
+            log.ip_address
+        ])
+    
+    output.seek(0)
+    return send_file(
+        BytesIO(output.getvalue().encode('utf-8-sig')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=f'logs_atividade_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    )
 
 # =====================================
 # API ENDPOINTS
@@ -1813,6 +2962,10 @@ def salvar_rotina_inspecao():
 @app.route('/api/update_inc_status/<int:inc_id>', methods=['POST'])
 @login_required
 def update_inc_status(inc_id):
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('cadastro_inc'):
+        return jsonify({'success': False, 'error': 'Acesso negado'}), 403
+    
     inc = INC.query.get_or_404(inc_id)
     
     # Obter dados da solicitação
@@ -1822,9 +2975,29 @@ def update_inc_status(inc_id):
     if not new_status:
         return jsonify({'success': False, 'error': 'Status não fornecido'}), 400
     
+    # Registrar o status original para o log
+    old_status = inc.status
+    
     # Atualizar status da INC
     inc.status = new_status
     db.session.commit()
+    
+    # Registrar a atualização de status
+    log_user_activity(
+        user_id=current_user.id,
+        action="update",
+        entity_type="inc_status",
+        entity_id=inc.id,
+        details={
+            "changes": {
+                "status": {
+                    "old": old_status,
+                    "new": new_status
+                }
+            },
+            "method": "api"
+        }
+    )
     
     return jsonify({
         'success': True, 
