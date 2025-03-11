@@ -10,6 +10,7 @@ import base64
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import textwrap  # Para formatar texto em múltiplas linhas no PDF
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, Response, jsonify
@@ -17,7 +18,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import csv
-from models import db, User, INC, LayoutSetting, Fornecedor, RotinaInspecao
+from models import db, User, INC, LayoutSetting, Fornecedor, RotinaInspecao, SolicitacaoFaturamento, ItemSolicitacaoFaturamento
 from config import Config
 
 app = Flask(__name__)
@@ -391,6 +392,237 @@ def editar_layout():
     settings = {s.element: s for s in LayoutSetting.query.all()}
     return render_template('editar_layout.html', settings=settings)
 
+
+# =====================================
+# ROTAS PARA SOLICITAÇÃO DE FATURAMENTO
+# =====================================
+
+@app.route('/solicitacoes_faturamento')
+@login_required
+def listar_solicitacoes_faturamento():
+    """Exibe a lista de solicitações de faturamento"""
+    solicitacoes = SolicitacaoFaturamento.query.order_by(SolicitacaoFaturamento.id.desc()).all()
+    return render_template('listar_solicitacoes_faturamento.html', solicitacoes=solicitacoes)
+
+@app.route('/nova_solicitacao_faturamento', methods=['GET', 'POST'])
+@login_required
+def nova_solicitacao_faturamento():
+    """Cria uma nova solicitação de faturamento"""
+    if request.method == 'POST':
+        try:
+            # Obter dados do formulário
+            tipo = request.form['tipo']
+            fornecedor = request.form['fornecedor']
+            volumes = int(request.form['volumes'])
+            tipo_frete = request.form['tipo_frete']
+            observacoes = request.form.get('observacoes', '')
+            
+            # Obter INCs selecionadas e quantidades
+            incs_ids = request.form.getlist('incs[]')
+            quantidades = {}
+            
+            for inc_id in incs_ids:
+                quantidade_key = f'quantidade_{inc_id}'
+                if quantidade_key in request.form:
+                    quantidades[inc_id] = int(request.form[quantidade_key])
+            
+            # Validações
+            if not incs_ids:
+                flash('Selecione pelo menos uma INC', 'danger')
+                return redirect(url_for('nova_solicitacao_faturamento'))
+            
+            if not quantidades:
+                flash('Informe as quantidades para as INCs selecionadas', 'danger')
+                return redirect(url_for('nova_solicitacao_faturamento'))
+                
+            # Gerar número sequencial para a solicitação
+            ultimo_numero = db.session.query(db.func.max(SolicitacaoFaturamento.numero)).scalar() or 0
+            novo_numero = ultimo_numero + 1
+            
+            # Criar a solicitação
+            solicitacao = SolicitacaoFaturamento(
+                numero=novo_numero,
+                tipo=tipo,
+                usuario_id=current_user.id,
+                fornecedor=fornecedor,
+                volumes=volumes,
+                tipo_frete=tipo_frete,
+                observacoes=observacoes
+            )
+            
+            db.session.add(solicitacao)
+            db.session.flush()  # Para obter o ID da solicitação
+            
+            # Adicionar itens à solicitação e atualizar status das INCs
+            for inc_id in incs_ids:
+                inc = INC.query.get(inc_id)
+                if inc:
+                    quantidade = quantidades.get(inc_id, 0)
+                    
+                    # Validar quantidade
+                    if quantidade <= 0 or quantidade > inc.quantidade_com_defeito:
+                        flash(f'Quantidade inválida para o item {inc.item}', 'danger')
+                        db.session.rollback()
+                        return redirect(url_for('nova_solicitacao_faturamento'))
+                    
+                    # Adicionar item à solicitação
+                    item = ItemSolicitacaoFaturamento(
+                        solicitacao_id=solicitacao.id,
+                        inc_id=inc.id,
+                        quantidade=quantidade
+                    )
+                    db.session.add(item)
+                    
+                    # Atualizar status da INC para "Concluída"
+                    inc.status = "Concluída"
+            
+            db.session.commit()
+            flash('Solicitação de faturamento criada com sucesso!', 'success')
+            return redirect(url_for('visualizar_solicitacao_faturamento', solicitacao_id=solicitacao.id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao criar solicitação: {str(e)}', 'danger')
+            return redirect(url_for('nova_solicitacao_faturamento'))
+    
+    # Processar solicitação GET
+    # Buscar fornecedores e INCs em andamento
+    fornecedores = Fornecedor.query.all()
+    incs = INC.query.filter_by(status='Em andamento').all()
+    
+    return render_template('nova_solicitacao_faturamento.html', 
+                          fornecedores=fornecedores, 
+                          incs=incs)
+
+@app.route('/solicitacao_faturamento/<int:solicitacao_id>')
+@login_required
+def visualizar_solicitacao_faturamento(solicitacao_id):
+    """Visualiza os detalhes de uma solicitação de faturamento"""
+    solicitacao = SolicitacaoFaturamento.query.get_or_404(solicitacao_id)
+    return render_template('visualizar_solicitacao_faturamento.html', solicitacao=solicitacao)
+
+@app.route('/exportar_pdf_solicitacao/<int:solicitacao_id>')
+@login_required
+def exportar_pdf_solicitacao(solicitacao_id):
+    """Exporta uma solicitação de faturamento para PDF"""
+    solicitacao = SolicitacaoFaturamento.query.get_or_404(solicitacao_id)
+    
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+    
+    # Configurar o título e cabeçalho
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, height - 50, f"Solicitação de Faturamento #{solicitacao.numero}")
+    
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, height - 80, f"Tipo: {solicitacao.tipo}")
+    c.drawString(300, height - 80, f"Data: {solicitacao.data_criacao.strftime('%d/%m/%Y')}")
+    
+    c.drawString(50, height - 100, f"Fornecedor: {solicitacao.fornecedor}")
+    c.drawString(50, height - 120, f"Volumes: {solicitacao.volumes}")
+    c.drawString(300, height - 120, f"Frete: {solicitacao.tipo_frete}")
+    c.drawString(50, height - 140, f"Solicitante: {solicitacao.usuario.username}")
+    
+    # Desenhar linha separadora
+    c.line(50, height - 160, width - 50, height - 160)
+    
+    # Cabeçalho da tabela de itens
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(50, height - 180, "Item")
+    c.drawString(150, height - 180, "Descrição")
+    c.drawString(350, height - 180, "Quantidade")
+    c.drawString(450, height - 180, "NF-e")
+    
+    # Conteúdo da tabela
+    c.setFont("Helvetica", 10)
+    y = height - 200
+    
+    for i, item in enumerate(solicitacao.itens):
+        if y < 100:  # Nova página se não houver espaço suficiente
+            c.showPage()
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(50, height - 50, f"Solicitação de Faturamento #{solicitacao.numero} (continuação)")
+            c.setFont("Helvetica", 10)
+            y = height - 80
+        
+        c.drawString(50, y, item.inc.item)
+        
+        # Limitar o tamanho da descrição para caber na página
+        descricao = item.inc.descricao_defeito
+        if len(descricao) > 40:
+            descricao = descricao[:37] + "..."
+        c.drawString(150, y, descricao)
+        
+        c.drawString(350, y, str(item.quantidade))
+        c.drawString(450, y, str(item.inc.nf))
+        
+        y -= 20
+    
+    # Observações
+    if solicitacao.observacoes:
+        if y < 150:  # Nova página se não houver espaço suficiente
+            c.showPage()
+            y = height - 50
+        
+        y -= 40
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, y, "Observações:")
+        c.setFont("Helvetica", 10)
+        
+        # Quebrar observações em múltiplas linhas se necessário
+        text_object = c.beginText(50, y - 20)
+        text_object.setFont("Helvetica", 10)
+        
+        observacoes = solicitacao.observacoes
+        wrapped_text = textwrap.fill(observacoes, width=80)
+        for line in wrapped_text.split('\n'):
+            text_object.textLine(line)
+        
+        c.drawText(text_object)
+    
+    # Assinaturas
+    y = 100
+    c.line(50, y, 250, y)
+    c.drawString(150 - (c.stringWidth("Assinatura Solicitante") / 2), y - 20, "Assinatura Solicitante")
+    
+    c.line(350, y, 550, y)
+    c.drawString(450 - (c.stringWidth("Assinatura Aprovador") / 2), y - 20, "Assinatura Aprovador")
+    
+    c.save()
+    buffer.seek(0)
+    return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name=f'solicitacao_faturamento_{solicitacao.numero}.pdf')
+
+@app.route('/api/incs_por_fornecedor/<fornecedor>')
+@login_required
+def api_incs_por_fornecedor(fornecedor):
+    """API para buscar INCs por fornecedor"""
+    try:
+        incs = INC.query.filter_by(fornecedor=fornecedor, status='Em andamento').all()
+        incs_json = []
+        
+        for inc in incs:
+            incs_json.append({
+                'id': inc.id,
+                'item': inc.item,
+                'nf': inc.nf,
+                'descricao_defeito': inc.descricao_defeito,
+                'quantidade_recebida': inc.quantidade_recebida,
+                'quantidade_com_defeito': inc.quantidade_com_defeito,
+                'data': inc.data,
+                'representante': inc.representante
+            })
+        
+        return jsonify({
+            'success': True,
+            'incs': incs_json
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # =====================================
 # ROTAS DE INC 
 # =====================================
@@ -634,6 +866,70 @@ def expiracao_inc():
 def print_inc_label(inc_id):
     inc = INC.query.get_or_404(inc_id)
     
+    # Função para sanitizar texto para ZPL
+    def sanitize_for_zpl(text):
+        if not text:
+            return ""
+        
+        # Mapeamento de caracteres especiais do português para seus equivalentes ZPL
+        special_chars = {
+            'á': 'a\x81', 'à': 'a\x85', 'ã': 'a\x83', 'â': 'a\x82', 'ä': 'a\x84',
+            'é': 'e\x81', 'è': 'e\x85', 'ê': 'e\x82', 'ë': 'e\x84',
+            'í': 'i\x81', 'ì': 'i\x85', 'î': 'i\x82', 'ï': 'i\x84',
+            'ó': 'o\x81', 'ò': 'o\x85', 'õ': 'o\x83', 'ô': 'o\x82', 'ö': 'o\x84',
+            'ú': 'u\x81', 'ù': 'u\x85', 'û': 'u\x82', 'ü': 'u\x84',
+            'ç': 'c\x87', 'Ç': 'C\x87',
+            'ñ': 'n\x83', 'Ñ': 'N\x83'
+        }
+        
+        # Substituir caracteres especiais
+        for char, zpl_char in special_chars.items():
+            text = text.replace(char, zpl_char)
+        
+        # Remover outros caracteres não-ASCII que não foram mapeados
+        text = ''.join(c if ord(c) < 128 or c in ['\x81', '\x82', '\x83', '\x84', '\x85', '\x87'] else '?' for c in text)
+        
+        return text
+    
+    # Quebrar texto em linhas com máximo de 40 caracteres
+    def format_text_with_linebreaks(text, max_chars=40):
+        if not text:
+            return ""
+        
+        # Sanitizar o texto primeiro
+        text = sanitize_for_zpl(text)
+        
+        # Dividir o texto em palavras
+        words = text.split()
+        lines = []
+        current_line = ""
+        
+        for word in words:
+            # Se adicionar esta palavra ultrapassa o limite
+            if len(current_line) + len(word) + 1 > max_chars:
+                # Adicionar linha atual à lista de linhas
+                if current_line:
+                    lines.append(current_line)
+                # Começar nova linha com esta palavra
+                current_line = word
+            else:
+                # Adicionar palavra à linha atual
+                if current_line:
+                    current_line += " " + word
+                else:
+                    current_line = word
+        
+        # Adicionar a última linha
+        if current_line:
+            lines.append(current_line)
+        
+        # Juntar as linhas com quebras de linha ZPL
+        return "\\&".join(lines)
+    
+    # Preparar os dados com quebras de linha e caracteres especiais tratados
+    descricao_formatada = format_text_with_linebreaks(inc.descricao_defeito)
+    acao_formatada = format_text_with_linebreaks(inc.acao_recomendada)
+    
     # Montar o ZPL com layout ajustado
     zpl = f"""^XA
 ^PW800          ; Largura: 100 mm = 800 pontos (203 DPI)
@@ -642,25 +938,25 @@ def print_inc_label(inc_id):
 ^FO50,50^FDNF-e:^FS
 ^FO300,50^FD{inc.nf}^FS
 ^FO50,100^FDData:^FS
-^FO300,100^FD{inc.data}^FS
+^FO300,100^FD{sanitize_for_zpl(inc.data)}^FS
 ^FO50,150^FDRepresentante:^FS
-^FO300,150^FD{inc.representante[:20]}^FS    ; Limitar a 20 caracteres
+^FO300,150^FD{sanitize_for_zpl(inc.representante[:20])}^FS    ; Limitar a 20 caracteres
 ^FO50,200^FDFornecedor:^FS
-^FO300,200^FD{inc.fornecedor[:20]}^FS      ; Limitar a 20 caracteres
+^FO300,200^FD{sanitize_for_zpl(inc.fornecedor[:20])}^FS      ; Limitar a 20 caracteres
 ^FO50,250^FDItem:^FS
-^FO300,250^FD{inc.item}^FS
+^FO300,250^FD{sanitize_for_zpl(inc.item)}^FS
 ^FO50,300^FDQtd. Recebida:^FS
 ^FO300,300^FD{inc.quantidade_recebida}^FS
 ^FO50,350^FDQtd. Defeituosa:^FS
 ^FO300,350^FD{inc.quantidade_com_defeito}^FS
 ^FO50,400^FDDescricao:^FS
-^FO300,400^FB600,6,N,10^FD{inc.descricao_defeito}^FS  ; Bloco de texto com quebra de linha
+^FO300,400^FB400,6,L,10^FD{descricao_formatada}^FS  ; Bloco de texto com quebra de linha
 ^FO50,650^FDUrgencia:^FS
-^FO300,650^FD{inc.urgencia}^FS
+^FO300,650^FD{sanitize_for_zpl(inc.urgencia)}^FS
 ^FO50,720^FDAcao Recomendada:^FS
-^FO300,720^FB600,3,N,10^FD{inc.acao_recomendada}^FS  ; Bloco de texto com quebra de linha
+^FO300,720^FB400,3,L,10^FD{acao_formatada}^FS  ; Bloco de texto com quebra de linha
 ^FO50,830^FDStatus:^FS
-^FO300,830^FD{inc.status}^FS
+^FO300,830^FD{sanitize_for_zpl(inc.status)}^FS
 ^XZ"""
 
     printer_ip = app.config.get('PRINTER_IP', "192.168.1.48")
@@ -668,12 +964,16 @@ def print_inc_label(inc_id):
     
     try:
         logging.debug(f"Tentando conectar a {printer_ip}:{printer_port}")
+        logging.debug(f"ZPL a ser enviado: {zpl}")
+        
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(5)  # Timeout de 5 segundos
             s.connect((printer_ip, printer_port))
             logging.debug("Conexão estabelecida, enviando ZPL")
-            s.send(zpl.encode('utf-8'))
+            # Enviar dados como bytes brutos sem nenhuma codificação adicional
+            s.send(zpl.encode('ascii', errors='replace'))
             logging.debug("ZPL enviado com sucesso")
+        
         flash('Etiqueta enviada para impressão!', 'success')
     except socket.error as e:
         logging.error(f"Erro de socket: {str(e)}")
@@ -683,7 +983,6 @@ def print_inc_label(inc_id):
         flash(f'Erro ao imprimir: {str(e)}', 'danger')
 
     return redirect(url_for('detalhes_inc', inc_id=inc_id))
-
 @app.route('/export_csv')
 @login_required
 def export_csv():

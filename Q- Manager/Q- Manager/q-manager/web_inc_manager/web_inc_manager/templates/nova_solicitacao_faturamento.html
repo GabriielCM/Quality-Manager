@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-file-invoice-dollar me-2"></i>Nova Solicitação de Faturamento
+            </h5>
+            <div>
+                <a href="{{ url_for('listar_solicitacoes_faturamento') }}" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-list me-1"></i> Listar Solicitações
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="POST" id="solicitacaoForm">
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-light h-100">
+                            <div class="card-header bg-primary text-white">
+                                1. Informações Gerais
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="tipo" class="form-label">Tipo de Solicitação</label>
+                                    <select class="form-select" id="tipo" name="tipo" required>
+                                        <option value="">Selecione...</option>
+                                        <option value="Conserto">Conserto</option>
+                                        <option value="Conserto em Garantia">Conserto em Garantia</option>
+                                        <option value="Devolução">Devolução</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="fornecedor" class="form-label">Fornecedor</label>
+                                    <select class="form-select" id="fornecedor" name="fornecedor" required>
+                                        <option value="">Selecione...</option>
+                                        {% for fornecedor in fornecedores %}
+                                        <option value="{{ fornecedor.razao_social }}">{{ fornecedor.razao_social }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="volumes" class="form-label">Quantidade de Volumes</label>
+                                    <input type="number" class="form-control" id="volumes" name="volumes" min="1" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Tipo de Frete</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="tipo_frete" id="tipo_frete_cif" value="CIF" required>
+                                        <label class="form-check-label" for="tipo_frete_cif">
+                                            CIF (Frete por conta do fornecedor)
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="tipo_frete" id="tipo_frete_fob" value="FOB" required>
+                                        <label class="form-check-label" for="tipo_frete_fob">
+                                            FOB (Frete por conta do comprador)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <div class="card bg-light h-100">
+                            <div class="card-header bg-primary text-white">
+                                2. Selecionar INCs
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info mb-3" id="selecione-fornecedor">
+                                    <i class="fas fa-info-circle me-2"></i> Selecione um fornecedor para ver suas INCs em andamento.
+                                </div>
+                                
+                                <div id="incs-container" style="display:none;">
+                                    <div class="alert alert-warning mb-3">
+                                        <i class="fas fa-exclamation-triangle me-2"></i> Selecione pelo menos uma INC. Apenas INCs do mesmo fornecedor podem ser incluídas em uma solicitação.
+                                    </div>
+                                    
+                                    <div id="loading-incs" class="text-center py-4" style="display:none;">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Carregando...</span>
+                                        </div>
+                                        <p class="mt-2">Carregando INCs...</p>
+                                    </div>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-striped" id="incs-table">
+                                            <thead>
+                                                <tr>
+                                                    <th width="5%">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="select-all">
+                                                        </div>
+                                                    </th>
+                                                    <th width="15%">Item</th>
+                                                    <th width="35%">Descrição</th>
+                                                    <th width="10%">Qtd. Defeito</th>
+                                                    <th width="10%">Qtd. Solicitada</th>
+                                                    <th width="10%">NF-e</th>
+                                                    <th width="15%">Data</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="incs-tbody">
+                                                <!-- Registros serão carregados dinamicamente -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <div id="no-incs" class="alert alert-warning" style="display:none;">
+                                    <i class="fas fa-exclamation-circle me-2"></i> Não há INCs em andamento para este fornecedor.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card bg-light mb-4">
+                    <div class="card-header bg-primary text-white">
+                        3. Observações
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="observacoes" class="form-label">Observações (opcional)</label>
+                            <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('listar_solicitacoes_faturamento') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success" id="submit-btn" disabled>
+                        <i class="fas fa-save me-1"></i> Criar Solicitação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fornecedorSelect = document.getElementById('fornecedor');
+    const incsContainer = document.getElementById('incs-container');
+    const loadingIncs = document.getElementById('loading-incs');
+    const noIncs = document.getElementById('no-incs');
+    const selecioneFornecedor = document.getElementById('selecione-fornecedor');
+    const incsTbody = document.getElementById('incs-tbody');
+    const selectAll = document.getElementById('select-all');
+    const submitBtn = document.getElementById('submit-btn');
+    const solicitacaoForm = document.getElementById('solicitacaoForm');
+    
+    // Ativar/desativar botão de submit com base na seleção de INCs
+    function updateSubmitButton() {
+        const checkedBoxes = document.querySelectorAll('input[name="incs[]"]:checked');
+        submitBtn.disabled = checkedBoxes.length === 0;
+    }
+    
+    // Carregar INCs do fornecedor selecionado
+    fornecedorSelect.addEventListener('change', function() {
+        const fornecedor = this.value;
+        
+        if (!fornecedor) {
+            incsContainer.style.display = 'none';
+            noIncs.style.display = 'none';
+            selecioneFornecedor.style.display = 'block';
+            return;
+        }
+        
+        selecioneFornecedor.style.display = 'none';
+        incsContainer.style.display = 'block';
+        loadingIncs.style.display = 'block';
+        noIncs.style.display = 'none';
+        incsTbody.innerHTML = '';
+        
+        // Buscar INCs do fornecedor via API
+        fetch(`/api/incs_por_fornecedor/${encodeURIComponent(fornecedor)}`)
+            .then(response => response.json())
+            .then(data => {
+                loadingIncs.style.display = 'none';
+                
+                if (data.success && data.incs.length > 0) {
+                    renderIncsTable(data.incs);
+                } else {
+                    noIncs.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loadingIncs.style.display = 'none';
+                noIncs.style.display = 'block';
+                noIncs.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i> Erro ao carregar INCs: ${error.message || 'Erro desconhecido'}`;
+            });
+    });
+    
+    // Renderizar tabela de INCs
+    function renderIncsTable(incs) {
+        incsTbody.innerHTML = '';
+        
+        incs.forEach(inc => {
+            const row = document.createElement('tr');
+            
+            // Limitar tamanho da descrição
+            let descricao = inc.descricao_defeito;
+            if (descricao && descricao.length > 50) {
+                descricao = descricao.substring(0, 47) + '...';
+            }
+            
+            row.innerHTML = `
+                <td>
+                    <div class="form-check">
+                        <input class="form-check-input inc-checkbox" type="checkbox" name="incs[]" value="${inc.id}" data-item="${inc.item}" data-qtd="${inc.quantidade_com_defeito}">
+                    </div>
+                </td>
+                <td>${inc.item}</td>
+                <td title="${inc.descricao_defeito}">${descricao || 'N/A'}</td>
+                <td>${inc.quantidade_com_defeito}</td>
+                <td>
+                    <input type="number" class="form-control form-control-sm quantidade-input" name="quantidade_${inc.id}" min="1" max="${inc.quantidade_com_defeito}" value="${inc.quantidade_com_defeito}" required disabled>
+                </td>
+                <td>${inc.nf}</td>
+                <td>${inc.data}</td>
+            `;
+            
+            incsTbody.appendChild(row);
+        });
+        
+        // Adicionar event listeners aos checkboxes
+        document.querySelectorAll('.inc-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const row = this.closest('tr');
+                const quantidadeInput = row.querySelector('.quantidade-input');
+                
+                if (this.checked) {
+                    quantidadeInput.disabled = false;
+                } else {
+                    quantidadeInput.disabled = true;
+                }
+                
+                updateSubmitButton();
+            });
+        });
+        
+        // Event listener para "Selecionar Todos"
+        selectAll.addEventListener('change', function() {
+            const isChecked = this.checked;
+            document.querySelectorAll('.inc-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+                const row = checkbox.closest('tr');
+                const quantidadeInput = row.querySelector('.quantidade-input');
+                quantidadeInput.disabled = !isChecked;
+            });
+            
+            updateSubmitButton();
+        });
+        
+        // Validar quantidades
+        document.querySelectorAll('.quantidade-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const max = parseInt(this.getAttribute('max'));
+                const value = parseInt(this.value);
+                
+                if (value < 1) {
+                    this.value = '1';
+                    showToast('A quantidade mínima é 1', 'warning');
+                }
+                else if (value > max) {
+                    this.value = max;
+                    showToast(`A quantidade máxima é ${max}`, 'warning');
+                }
+            });
+        });
+    }
+    
+    // Validar formulário antes de enviar
+    solicitacaoForm.addEventListener('submit', function(e) {
+        const checkedBoxes = document.querySelectorAll('input[name="incs[]"]:checked');
+        
+        if (checkedBoxes.length === 0) {
+            e.preventDefault();
+            showToast('Selecione pelo menos uma INC', 'danger');
+            return false;
+        }
+        
+        // Verificar se todas as quantidades foram preenchidas
+        let valid = true;
+        checkedBoxes.forEach(checkbox => {
+            const incId = checkbox.value;
+            const quantidadeInput = document.querySelector(`input[name="quantidade_${incId}"]`);
+            
+            if (!quantidadeInput.value || parseInt(quantidadeInput.value) < 1) {
+                valid = false;
+                showToast(`Informe uma quantidade válida para o item ${checkbox.dataset.item}`, 'danger');
+            }
+        });
+        
+        if (!valid) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Confirmar ação
+        if (!confirm('Ao criar esta solicitação, as INCs selecionadas terão seu status alterado para "Concluída". Deseja continuar?')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Função para exibir toasts
+    function showToast(message, type = 'info') {
+        // Verificar se a função global showToast existe
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+        } else {
+            // Implementação simples caso a função global não exista
+            alert(message);
+        }
+    }
+});
+</script>
+{% endblock %}

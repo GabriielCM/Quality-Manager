@@ -71,6 +71,19 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#faturamentoSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>Faturamento
+                    </a>
+                    <ul class="collapse list-unstyled" id="faturamentoSubmenu">
+                        <li>
+                            <a href="{{ url_for('nova_solicitacao_faturamento') }}">Nova Solicitação</a>
+                        </li>
+                        <li>
+                            <a href="{{ url_for('listar_solicitacoes_faturamento') }}">Listar Solicitações</a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
                     <a href="{{ url_for('gerenciar_fornecedores') }}">
                         <i class="fas fa-building me-2"></i>Gerenciar Fornecedores
                     </a>

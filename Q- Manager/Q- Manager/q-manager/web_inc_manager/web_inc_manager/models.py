@@ -48,3 +48,27 @@ class RotinaInspecao(db.Model):
     data_inspecao = db.Column(db.DateTime, default=datetime.utcnow)
     registros = db.Column(db.Text, nullable=False)  # JSON com os registros (itens inspecionados/adiados)
     inspetor = db.relationship('User', backref=db.backref('rotinas', lazy=True))
+
+
+class SolicitacaoFaturamento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.Integer, unique=True, nullable=False)
+    tipo = db.Column(db.String(30), nullable=False)  # Conserto, Conserto em Garantia, Devolução
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    usuario = db.relationship('User', backref=db.backref('solicitacoes', lazy=True))
+    fornecedor = db.Column(db.String(100), nullable=False)
+    volumes = db.Column(db.Integer, nullable=False)
+    tipo_frete = db.Column(db.String(3), nullable=False)  # CIF, FOB
+    observacoes = db.Column(db.Text, nullable=True)
+    
+    # Relacionamento com as INCs - Usando uma tabela auxiliar para armazenar também a quantidade
+    itens = db.relationship('ItemSolicitacaoFaturamento', backref='solicitacao', lazy=True, cascade="all, delete-orphan")
+
+# Tabela de relacionamento entre SolicitacaoFaturamento e INC
+class ItemSolicitacaoFaturamento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    solicitacao_id = db.Column(db.Integer, db.ForeignKey('solicitacao_faturamento.id'), nullable=False)
+    inc_id = db.Column(db.Integer, db.ForeignKey('inc.id'), nullable=False)
+    inc = db.relationship('INC')
+    quantidade = db.Column(db.Integer, nullable=False)

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-file-invoice-dollar me-2"></i>Solicitação de Faturamento #{{ solicitacao.numero }}
+            </h5>
+            <div>
+                <a href="{{ url_for('exportar_pdf_solicitacao', solicitacao_id=solicitacao.id) }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-file-pdf me-1"></i> Exportar PDF
+                </a>
+                <a href="{{ url_for('listar_solicitacoes_faturamento') }}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-list me-1"></i> Listar Solicitações
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card bg-light h-100">
+                        <div class="card-header bg-primary text-white">
+                            Informações Gerais
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <p><strong>Número:</strong> {{ solicitacao.numero }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Data:</strong> {{ solicitacao.data_criacao.strftime('%d/%m/%Y %H:%M') }}</p>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <p><strong>Tipo:</strong> {{ solicitacao.tipo }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Frete:</strong> {{ solicitacao.tipo_frete }}</p>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <p><strong>Volumes:</strong> {{ solicitacao.volumes }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Solicitante:</strong> {{ solicitacao.usuario.username }}</p>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <p><strong>Fornecedor:</strong> {{ solicitacao.fornecedor }}</p>
+                            </div>
+                            
+                            {% if solicitacao.observacoes %}
+                            <div class="mb-0">
+                                <p><strong>Observações:</strong></p>
+                                <div class="bg-white p-3 border rounded">
+                                    <p class="mb-0">{{ solicitacao.observacoes }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card bg-light h-100">
+                        <div class="card-header bg-primary text-white">
+                            Status da Solicitação
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i> Esta solicitação contém <strong>{{ solicitacao.itens|length }}</strong> item(s).
+                            </div>
+                            
+                            <div class="mb-4">
+                                <h6 class="mb-2">Resumo dos Itens:</h6>
+                                <div class="progress" style="height: 25px;">
+                                    {% set total_itens = solicitacao.itens|length %}
+                                    {% set percent = 100 %}
+                                    <div class="progress-bar bg-success progress-bar-striped" role="progressbar" style="width: {{ percent }}%" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
+                                        {{ percent }}% Processados
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center py-3">
+                                <div class="mb-3">
+                                    <i class="fas fa-check-circle text-success fa-5x"></i>
+                                </div>
+                                <h5>Solicitação Gerada com Sucesso</h5>
+                                <p class="text-muted">Todos os itens desta solicitação foram processados e as INCs relacionadas foram atualizadas para status "Concluída".</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-list me-2"></i>Itens da Solicitação
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Descrição</th>
+                                    <th>NF-e</th>
+                                    <th>Qtd. Solicitada</th>
+                                    <th>Status INC</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in solicitacao.itens %}
+                                <tr>
+                                    <td>{{ item.inc.item }}</td>
+                                    <td>
+                                        {% if item.inc.descricao_defeito %}
+                                            {% if item.inc.descricao_defeito|length > 50 %}
+                                                <span title="{{ item.inc.descricao_defeito }}">{{ item.inc.descricao_defeito[:47] }}...</span>
+                                            {% else %}
+                                                {{ item.inc.descricao_defeito }}
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Sem descrição</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.inc.nf }}</td>
+                                    <td>{{ item.quantidade }}</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            {{ item.inc.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('detalhes_inc', inc_id=item.inc.id) }}" class="btn btn-info btn-sm">
+                                            <i class="fas fa-eye"></i> Ver INC
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('listar_solicitacoes_faturamento') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar para Lista
+                </a>
+                <a href="{{ url_for('exportar_pdf_solicitacao', solicitacao_id=solicitacao.id) }}" class="btn btn-primary">
+                    <i class="fas fa-file-pdf me-1"></i> Exportar PDF
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
