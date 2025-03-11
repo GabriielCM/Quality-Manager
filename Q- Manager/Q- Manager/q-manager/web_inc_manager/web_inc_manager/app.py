@@ -1003,6 +1003,38 @@ def set_crm_token():
     
     return render_template('set_crm_token.html')
 
+@app.route('/api/historico_incs/<path:item>', methods=['GET'])
+@login_required
+def api_historico_incs(item):
+    # Decodificar o item, pois pode conter caracteres especiais
+    item = item.upper().strip()
+    
+    # Buscar histórico de INCs para este item
+    incs = INC.query.filter_by(item=item).order_by(INC.id.desc()).all()
+    
+    # Converter para JSON
+    incs_json = []
+    for inc in incs:
+        incs_json.append({
+            'id': inc.id,
+            'nf': inc.nf,
+            'data': inc.data,
+            'representante': inc.representante,
+            'fornecedor': inc.fornecedor,
+            'quantidade_recebida': inc.quantidade_recebida,
+            'quantidade_com_defeito': inc.quantidade_com_defeito,
+            'descricao_defeito': inc.descricao_defeito[:100] + '...' if len(inc.descricao_defeito) > 100 else inc.descricao_defeito,
+            'urgencia': inc.urgencia,
+            'status': inc.status,
+            'oc': inc.oc
+        })
+    
+    return jsonify({
+        'item': item, 
+        'incs': incs_json, 
+        'total': len(incs_json)
+    })
+
 @app.route('/rotina_inspecao', methods=['GET', 'POST'])
 @login_required
 def rotina_inspecao():

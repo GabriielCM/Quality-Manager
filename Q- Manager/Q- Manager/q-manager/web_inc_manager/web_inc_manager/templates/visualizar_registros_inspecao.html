@@ -76,7 +76,13 @@
                             <tbody>
                                 {% for registro in registros %}
                                 <tr>
-                                    <td><strong>{{ registro.item }}</strong></td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <strong class="item-code" data-item="{{ registro.item }}">{{ registro.item }}</strong>
+                                            <!-- Espaço para o indicador de histórico de INC (será adicionado via JavaScript) -->
+                                            <span class="history-indicator ms-2"></span>
+                                        </div>
+                                    </td>
                                     <td>{{ registro.descricao }}</td>
                                     <td>{{ registro.qtd_recebida }}</td>
                                     <td class="status-cell" data-inspecionado="{{ registro.inspecionado|lower }}" data-adiado="{{ registro.adiado|lower }}">
@@ -155,6 +161,63 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para exibir histórico de INCs -->
+<div class="modal fade" id="historicoIncModal" tabindex="-1" aria-labelledby="historicoIncModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="historicoIncModalLabel">
+                    <i class="fas fa-history me-2"></i>Histórico de INCs do Item: <span id="modalItemCode"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-3" id="loadingHistorico">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Buscando histórico de INCs...</p>
+                </div>
+                
+                <div id="historicoContent" style="display:none;">
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Atenção!</strong> Este item possui um histórico de não-conformidades. Verifique cuidadosamente durante a inspeção.
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered" id="historicoTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>OC</th>
+                                    <th>NF-e</th>
+                                    <th>Data</th>
+                                    <th>Fornecedor</th>
+                                    <th>Qtd. Defeituosa</th>
+                                    <th>Descrição do Defeito</th>
+                                    <th>Urgência</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historicoTableBody">
+                                <!-- Conteúdo será preenchido dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div id="semHistorico" class="alert alert-info text-center" style="display:none;">
+                    <i class="fas fa-info-circle me-2"></i> Este item não possui histórico de INCs registradas.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -247,6 +310,134 @@ function updateProgressBar() {
     }
 }
 
+// Função para verificar histórico de INCs para um item
+async function checkIncHistory(item) {
+    try {
+        // Codificar o item para URL
+        const encodedItem = encodeURIComponent(item);
+        
+        // Fazer a requisição para a API
+        const response = await fetch(`/api/historico_incs/${encodedItem}`);
+        const data = await response.json();
+        
+        return {
+            success: true,
+            item: data.item,
+            incs: data.incs,
+            total: data.total
+        };
+    } catch (error) {
+        console.error(`Erro ao verificar histórico para o item ${item}:`, error);
+        return {
+            success: false,
+            item: item,
+            incs: [],
+            total: 0
+        };
+    }
+}
+
+// Função para exibir o modal com o histórico de INCs
+function showIncHistoryModal(item) {
+    // Atualizar o título do modal
+    document.getElementById('modalItemCode').textContent = item;
+    
+    // Mostrar o modal
+    const modal = new bootstrap.Modal(document.getElementById('historicoIncModal'));
+    modal.show();
+    
+    // Mostrar o loader e esconder outros conteúdos
+    document.getElementById('loadingHistorico').style.display = 'block';
+    document.getElementById('historicoContent').style.display = 'none';
+    document.getElementById('semHistorico').style.display = 'none';
+    
+    // Buscar o histórico de INCs
+    checkIncHistory(item).then(data => {
+        // Esconder o loader
+        document.getElementById('loadingHistorico').style.display = 'none';
+        
+        if (data.success && data.total > 0) {
+            // Preencher a tabela com o histórico
+            const tableBody = document.getElementById('historicoTableBody');
+            tableBody.innerHTML = '';
+            
+            data.incs.forEach(inc => {
+                const row = document.createElement('tr');
+                
+                // Classe de destaque para INCs críticas
+                if (inc.urgencia === 'Crítico') {
+                    row.classList.add('table-danger');
+                }
+                
+                row.innerHTML = `
+                    <td>${inc.oc}</td>
+                    <td>${inc.nf}</td>
+                    <td>${inc.data}</td>
+                    <td>${inc.fornecedor}</td>
+                    <td>${inc.quantidade_com_defeito}</td>
+                    <td>${inc.descricao_defeito}</td>
+                    <td>
+                        <span class="badge bg-${inc.urgencia === 'Crítico' ? 'danger' : inc.urgencia === 'Moderada' ? 'warning' : 'success'}">
+                            ${inc.urgencia}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${inc.status === 'Em andamento' ? 'primary' : inc.status === 'Concluída' ? 'success' : 'danger'}">
+                            ${inc.status}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="/detalhes_inc/${inc.id}" class="btn btn-info btn-sm" target="_blank">
+                            <i class="fas fa-eye"></i> Detalhes
+                        </a>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Mostrar o conteúdo
+            document.getElementById('historicoContent').style.display = 'block';
+        } else {
+            // Mostrar mensagem de que não há histórico
+            document.getElementById('semHistorico').style.display = 'block';
+        }
+    });
+}
+
+// Função para verificar todos os itens na página
+async function checkAllItems() {
+    const itemElements = document.querySelectorAll('.item-code');
+    
+    for (const element of itemElements) {
+        const item = element.getAttribute('data-item');
+        const indicatorElement = element.parentElement.querySelector('.history-indicator');
+        
+        // Verificar o histórico
+        const history = await checkIncHistory(item);
+        
+        if (history.success && history.total > 0) {
+            // Adicionar ícone de alerta
+            indicatorElement.innerHTML = `
+                <span class="badge bg-danger cursor-pointer history-badge" 
+                      data-item="${item}" 
+                      data-bs-toggle="tooltip" 
+                      title="Este item possui ${history.total} INCs em seu histórico. Clique para ver detalhes.">
+                    <i class="fas fa-exclamation-triangle"></i> ${history.total}
+                </span>
+            `;
+            
+            // Inicializar tooltip
+            new bootstrap.Tooltip(indicatorElement.querySelector('.history-badge'));
+            
+            // Adicionar evento de clique para exibir o modal
+            indicatorElement.querySelector('.history-badge').addEventListener('click', function() {
+                showIncHistoryModal(item);
+            });
+        }
+    }
+}
+
 // Inicializa quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
     // Preenche todos os inputs de posição de rolagem com o valor atual
@@ -286,6 +477,22 @@ document.addEventListener('DOMContentLoaded', function() {
             row.querySelector('button.btn-warning').disabled = true;
         }
     });
+    
+    // Verificar histórico de INCs para todos os itens
+    checkAllItems();
+    
+    // Adicionar CSS para cursor pointer
+    const style = document.createElement('style');
+    style.textContent = `
+        .cursor-pointer {
+            cursor: pointer;
+        }
+        .history-badge:hover {
+            background-color: #dc3545 !important;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+    `;
+    document.head.appendChild(style);
 });
 </script>
 {% endblock %}
