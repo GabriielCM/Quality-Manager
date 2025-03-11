@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-exclamation-triangle me-2"></i>Prateleira Não Conforme
+            </h5>
+            <div>
+                <a href="{{ url_for('atualizar_prateleira_nao_conforme') }}" class="btn btn-primary">
+                    <i class="fas fa-sync-alt me-1"></i> Atualizar Lista
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if dados_antigos %}
+            <div class="alert alert-warning mb-4">
+                <i class="fas fa-exclamation-triangle me-2"></i> <strong>Atenção!</strong> Os dados desta lista foram atualizados pela última vez há mais de 24 horas ({{ ultima_atualizacao.strftime('%d/%m/%Y %H:%M') }}). Considere atualizar a lista para obter informações mais recentes.
+            </div>
+            {% endif %}
+            
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Valor Total em Prateleira</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ "{:,.2f}".format(valor_total).replace(',', 'X').replace('.', ',').replace('X', '.') }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Defeitos Detectados no Recebimento</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ itens_recebimento|length }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-truck fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card border-left-danger shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                        Defeitos Detectados na Produção</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ itens_producao|length }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-tools fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="recebimento-tab" data-bs-toggle="tab" data-bs-target="#recebimento" type="button" role="tab" aria-controls="recebimento" aria-selected="true">
+                        <i class="fas fa-truck me-1"></i> Defeitos no Recebimento ({{ itens_recebimento|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="producao-tab" data-bs-toggle="tab" data-bs-target="#producao" type="button" role="tab" aria-controls="producao" aria-selected="false">
+                        <i class="fas fa-tools me-1"></i> Defeitos na Produção ({{ itens_producao|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="todos-tab" data-bs-toggle="tab" data-bs-target="#todos" type="button" role="tab" aria-controls="todos" aria-selected="false">
+                        <i class="fas fa-list me-1"></i> Todos os Itens ({{ itens_recebimento|length + itens_producao|length }})
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="myTabContent">
+                <!-- Tab Defeitos no Recebimento -->
+                <div class="tab-pane fade show active" id="recebimento" role="tabpanel" aria-labelledby="recebimento-tab">
+                    {% if itens_recebimento %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover datatable">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Descrição</th>
+                                    <th>Quantidade</th>
+                                    <th>Data Últ. Movimentação</th>
+                                    <th>INC</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in itens_recebimento %}
+                                <tr data-id="{{ item.id }}">
+                                    <td>{{ item.item }}</td>
+                                    <td>{{ item.descricao }}</td>
+                                    <td>{{ "{:,.2f}".format(item.quantidade).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                    <td>{{ item.data_ultima_movimentacao }}</td>
+                                    <td>
+                                        {% if item.inc %}
+                                        <a href="{{ url_for('detalhes_inc', inc_id=item.inc.id) }}" class="badge bg-primary text-white">
+                                            OC #{{ item.inc.oc }}
+                                        </a>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Sem INC</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            {% if item.inc %}
+                                            <a href="{{ url_for('detalhes_inc', inc_id=item.inc.id) }}" class="btn btn-info btn-sm">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% endif %}
+                                            <button class="btn btn-success btn-sm finalizar-item" data-id="{{ item.id }}" data-item="{{ item.item }}">
+                                                <i class="fas fa-check"></i> Finalizar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Não há itens com defeitos detectados no recebimento.
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Tab Defeitos na Produção -->
+                <div class="tab-pane fade" id="producao" role="tabpanel" aria-labelledby="producao-tab">
+                    {% if itens_producao %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover datatable">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Descrição</th>
+                                    <th>Quantidade</th>
+                                    <th>Data Últ. Movimentação</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in itens_producao %}
+                                <tr data-id="{{ item.id }}">
+                                    <td>{{ item.item }}</td>
+                                    <td>{{ item.descricao }}</td>
+                                    <td>{{ "{:,.2f}".format(item.quantidade).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                    <td>{{ item.data_ultima_movimentacao }}</td>
+                                    <td>
+                                        <button class="btn btn-success btn-sm finalizar-item" data-id="{{ item.id }}" data-item="{{ item.item }}">
+                                            <i class="fas fa-check"></i> Finalizar
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Não há itens com defeitos detectados na produção.
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Tab Todos os Itens -->
+                <div class="tab-pane fade" id="todos" role="tabpanel" aria-labelledby="todos-tab">
+                    {% if itens_recebimento or itens_producao %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover datatable">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Descrição</th>
+                                    <th>Quantidade</th>
+                                    <th>Data Últ. Movimentação</th>
+                                    <th>Tipo</th>
+                                    <th>INC</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in itens_recebimento + itens_producao %}
+                                <tr data-id="{{ item.id }}">
+                                    <td>{{ item.item }}</td>
+                                    <td>{{ item.descricao }}</td>
+                                    <td>{{ "{:,.2f}".format(item.quantidade).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                    <td>{{ item.data_ultima_movimentacao }}</td>
+                                    <td>
+                                        {% if item.tipo_defeito == "Recebimento" %}
+                                        <span class="badge bg-warning">Recebimento</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Produção</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.inc %}
+                                        <a href="{{ url_for('detalhes_inc', inc_id=item.inc.id) }}" class="badge bg-primary text-white">
+                                            OC #{{ item.inc.oc }}
+                                        </a>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Sem INC</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            {% if item.inc %}
+                                            <a href="{{ url_for('detalhes_inc', inc_id=item.inc.id) }}" class="btn btn-info btn-sm">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% endif %}
+                                            <button class="btn btn-success btn-sm finalizar-item" data-id="{{ item.id }}" data-item="{{ item.item }}">
+                                                <i class="fas fa-check"></i> Finalizar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Não há itens na prateleira não conforme.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação para Finalizar Item -->
+<div class="modal fade" id="finalizarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Finalizar Item</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja finalizar o item <strong id="finalizarItemName"></strong>?</p>
+                <p>Esta ação irá:</p>
+                <ul>
+                    <li>Remover o item da prateleira não conforme</li>
+                    <li>Caso haja uma INC associada, alterará seu status para "Concluída"</li>
+                </ul>
+                <p class="text-danger">Esta ação não pode ser desfeita!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmFinalizarBtn">
+                    <i class="fas fa-check me-1"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mb-4">
+    <a href="{{ url_for('main_menu') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Voltar para o Menu Principal
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar DataTables
+    if (typeof $.fn.DataTable !== 'undefined') {
+        $('.datatable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json'
+            },
+            order: [[0, 'asc']], // Ordenar por código do item
+            pageLength: 25,
+            responsive: true
+        });
+    }
+    
+    // Botões para finalizar item
+    const finalizarBtns = document.querySelectorAll('.finalizar-item');
+    const finalizarModal = new bootstrap.Modal(document.getElementById('finalizarModal'));
+    const confirmFinalizarBtn = document.getElementById('confirmFinalizarBtn');
+    let itemIdToFinalize = null;
+    
+    finalizarBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.getAttribute('data-id');
+            const itemName = this.getAttribute('data-item');
+            
+            document.getElementById('finalizarItemName').textContent = itemName;
+            itemIdToFinalize = itemId;
+            
+            finalizarModal.show();
+        });
+    });
+    
+    // Confirmar finalização
+    confirmFinalizarBtn.addEventListener('click', function() {
+        if (!itemIdToFinalize) return;
+        
+        // Desabilitar botão para evitar cliques duplos
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Processando...';
+        
+        // Enviar solicitação para API
+        fetch('/api/atualizar_status_prateleira', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                item_id: itemIdToFinalize,
+                status: 'finalizar'
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Fechar modal
+                finalizarModal.hide();
+                
+                // Remover linha da tabela
+                const rows = document.querySelectorAll(`tr[data-id="${itemIdToFinalize}"]`);
+                rows.forEach(row => {
+                    // Se estiver usando DataTables, usar sua API para remover a linha
+                    if (typeof $.fn.DataTable !== 'undefined') {
+                        const table = $(row).closest('table').DataTable();
+                        table.row(row).remove().draw();
+                    } else {
+                        row.remove();
+                    }
+                });
+                
+                // Atualizar contadores
+                const totalItems = document.querySelectorAll('#todos tbody tr').length;
+                const recebimentoItems = document.querySelectorAll('#recebimento tbody tr').length;
+                const producaoItems = document.querySelectorAll('#producao tbody tr').length;
+                
+                // Atualizar texto nas abas
+                document.querySelector('#recebimento-tab').textContent = `Defeitos no Recebimento (${recebimentoItems})`;
+                document.querySelector('#producao-tab').textContent = `Defeitos na Produção (${producaoItems})`;
+                document.querySelector('#todos-tab').textContent = `Todos os Itens (${totalItems})`;
+                
+                // Exibir mensagem de sucesso
+                showToast(data.message || 'Item finalizado com sucesso!', 'success');
+            } else {
+                showToast(data.error || 'Erro ao finalizar item', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Erro ao finalizar item: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            // Reabilitar botão
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-check me-1"></i> Confirmar';
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -18,7 +18,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import csv
-from models import db, User, INC, LayoutSetting, Fornecedor, RotinaInspecao, SolicitacaoFaturamento, ItemSolicitacaoFaturamento
+from models import db, User, INC, LayoutSetting, Fornecedor, RotinaInspecao, SolicitacaoFaturamento, ItemSolicitacaoFaturamento, PrateleiraNaoConforme
 from config import Config
 
 app = Flask(__name__)
@@ -46,9 +46,84 @@ app.jinja_env.filters['tojson'] = lambda x: json.dumps(x)
 # Configurações de logging
 logging.basicConfig(level=logging.DEBUG)
 
+
+# Configurar logging aprimorado
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+
+# Função para visualizar o conteúdo do arquivo
+def display_file_preview(filepath, num_lines=20):
+    """Exibe uma prévia do conteúdo do arquivo para depuração"""
+    try:
+        with open(filepath, 'rb') as f:
+            raw_data = f.read()
+            encoding = chardet.detect(raw_data)['encoding'] or 'latin-1'
+        
+        with open(filepath, 'r', encoding=encoding) as file:
+            lines = [line.rstrip() for line in file.readlines()[:num_lines]]
+            
+        app.logger.debug(f"Prévia do arquivo ({encoding}):")
+        for i, line in enumerate(lines):
+            app.logger.debug(f"{i+1:3d}: {line}")
+            
+    except Exception as e:
+        app.logger.error(f"Erro ao ler prévia do arquivo: {str(e)}")
+
+
 # =====================================
 # FUNÇÕES UTILITÁRIAS
 # =====================================
+
+def diagnosticar_linha_lst(line, linha_numero):
+    """Diagnostica uma linha do arquivo LST para ajudar na depuração"""
+    try:
+        app.logger.debug(f"Diagnóstico da linha {linha_numero}:")
+        app.logger.debug(f"  Comprimento: {len(line)} caracteres")
+        app.logger.debug(f"  Conteúdo: '{line}'")
+        
+        # Contar espaços iniciais
+        espacos_iniciais = len(line) - len(line.lstrip(' '))
+        app.logger.debug(f"  Espaços iniciais: {espacos_iniciais}")
+        
+        # Exibir caracteres posicionalmente (índices)
+        posicoes = ""
+        for i in range(0, min(130, len(line)), 10):
+            posicoes += f"{i:10d}"
+        app.logger.debug(f"  Posições: {posicoes}")
+        
+        # Exibir os primeiros caracteres em detalhes
+        chars = ""
+        for i in range(min(130, len(line))):
+            chars += line[i]
+        app.logger.debug(f"  Chars:    {chars}")
+        
+        # Testar expressões regulares específicas
+        item_pattern1 = re.compile(r'\s+([A-Z]{3}\.\d{5})\s+')
+        item_pattern2 = re.compile(r'\s{20,}([A-Z]{3}\.\d{5})')
+        item_pattern3 = re.compile(r'\s+([A-Z]{3}\.\d{5})\s+(.*?)\s+(\d+(?:\.\d+)*,\d+)\s+\d+,\d+\s+(\d{2}/\d{2}/\d{4})')
+        
+        m1 = item_pattern1.search(line)
+        m2 = item_pattern2.match(line)
+        m3 = item_pattern3.search(line)
+        
+        app.logger.debug(f"  Padrão 1 ('\s+([A-Z]{{3}}\.\d{{5}})\s+'): {m1.group(1) if m1 else 'Não corresponde'}")
+        app.logger.debug(f"  Padrão 2 ('\s{{20,}}([A-Z]{{3}}\.\d{{5}})'): {m2.group(1) if m2 else 'Não corresponde'}")
+        app.logger.debug(f"  Padrão 3 (completo): {bool(m3)}")
+        
+        if m3:
+            app.logger.debug(f"    Item: {m3.group(1)}")
+            app.logger.debug(f"    Descrição: {m3.group(2)}")
+            app.logger.debug(f"    Quantidade: {m3.group(3)}")
+            app.logger.debug(f"    Data: {m3.group(4)}")
+    
+    except Exception as e:
+        app.logger.error(f"Erro no diagnóstico da linha {linha_numero}: {str(e)}")
 
 def validate_item_format(item):
     """Valida o formato do item - 3 letras maiúsculas, ponto e 5 dígitos"""
@@ -392,6 +467,259 @@ def editar_layout():
     settings = {s.element: s for s in LayoutSetting.query.all()}
     return render_template('editar_layout.html', settings=settings)
 
+# =====================================
+# ROTAS PARA PRATELEIRA NÃO CONFORME
+# =====================================
+
+@app.route('/prateleira_nao_conforme')
+@login_required
+def listar_prateleira_nao_conforme():
+    """Lista os itens da prateleira não conforme"""
+    # Verificar se há dados na prateleira
+    itens = PrateleiraNaoConforme.query.order_by(PrateleiraNaoConforme.item).all()
+    
+    # Calcular o valor total dos itens (soma das quantidades)
+    valor_total = db.session.query(db.func.sum(PrateleiraNaoConforme.quantidade)).scalar() or 0
+    
+    # Verificar idade dos dados
+    dados_antigos = False
+    if itens:
+        # Usar o registro mais recente como referência
+        ultima_atualizacao = db.session.query(db.func.max(PrateleiraNaoConforme.data_importacao)).scalar()
+        if ultima_atualizacao:
+            delta = datetime.utcnow() - ultima_atualizacao
+            dados_antigos = delta.total_seconds() / 3600 > 24  # Mais de 24 horas
+    
+    # Separar itens por categoria
+    itens_recebimento = [item for item in itens if item.tipo_defeito == "Recebimento"]
+    itens_producao = [item for item in itens if item.tipo_defeito == "Produção"]
+    
+    return render_template('prateleira_nao_conforme.html', 
+                          itens_recebimento=itens_recebimento,
+                          itens_producao=itens_producao,
+                          valor_total=valor_total,
+                          dados_antigos=dados_antigos,
+                          ultima_atualizacao=ultima_atualizacao if 'ultima_atualizacao' in locals() else None)
+
+@app.route('/atualizar_prateleira', methods=['GET', 'POST'])
+@login_required
+def atualizar_prateleira_nao_conforme():
+    """Atualiza a prateleira não conforme importando um novo arquivo LST"""
+    if request.method == 'POST':
+        # Verificar se o arquivo foi enviado
+        if 'arquivo_lst' not in request.files:
+            flash('Nenhum arquivo selecionado', 'danger')
+            return redirect(request.url)
+        
+        arquivo = request.files['arquivo_lst']
+        
+        # Se nenhum arquivo foi selecionado
+        if arquivo.filename == '':
+            flash('Nenhum arquivo selecionado', 'danger')
+            return redirect(request.url)
+        
+        # Verificar extensão do arquivo
+        if not arquivo.filename.lower().endswith('.lst'):
+            flash('Apenas arquivos .lst são permitidos', 'danger')
+            return redirect(request.url)
+        
+        # Salvar o arquivo temporariamente
+        filename = secure_filename(arquivo.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        arquivo.save(filepath)
+        
+        try:
+            # Exibir prévia do conteúdo para depuração
+            app.logger.info(f"Processando arquivo: {filename}")
+            display_file_preview(filepath)
+            
+            # Limpar os dados antigos
+            db.session.query(PrateleiraNaoConforme).delete()
+            
+            # Processar o arquivo LST
+            itens_processados = processar_arquivo_lst_prateleira(filepath)
+            
+            if not itens_processados:
+                flash('Nenhum item encontrado no arquivo. Verifique se o formato está correto.', 'warning')
+                return redirect(request.url)
+            
+            # Salvar os novos itens no banco
+            for item_data in itens_processados:
+                item = PrateleiraNaoConforme(**item_data)
+                db.session.add(item)
+            
+            db.session.commit()
+            flash(f'Prateleira não conforme atualizada com sucesso! {len(itens_processados)} itens processados.', 'success')
+            return redirect(url_for('listar_prateleira_nao_conforme'))
+            
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro ao processar arquivo: {str(e)}", exc_info=True)
+            flash(f'Erro ao processar arquivo: {str(e)}', 'danger')
+            return redirect(request.url)
+        finally:
+            # Remover o arquivo temporário
+            if os.path.exists(filepath):
+                os.remove(filepath)
+    
+    return render_template('atualizar_prateleira.html')
+
+def processar_arquivo_lst_prateleira(filepath):
+    """Processa um arquivo LST e retorna os itens para a prateleira não conforme"""
+    itens = []
+    
+    # Detectar a codificação do arquivo
+    with open(filepath, 'rb') as f:
+        raw_data = f.read()
+        encoding = chardet.detect(raw_data)['encoding'] or 'latin-1'
+    
+    app.logger.debug(f"Usando codificação: {encoding}")
+    
+    # Ler o conteúdo do arquivo
+    with open(filepath, 'r', encoding=encoding) as file:
+        lines = file.readlines()
+    
+    app.logger.debug(f"Arquivo LST lido com sucesso. Total de linhas: {len(lines)}")
+    
+    # Abordagem alternativa: processar linhas com base em critérios mais simples
+    for i, line in enumerate(lines):
+        # Remover quebras de linha e espaços extras
+        line = line.rstrip('\n')
+        
+        # Pular linhas vazias, cabeçalhos e rodapés
+        if not line.strip() or "ITEM / LOCAL" in line or "DENOMINACAO DO ITEM" in line or "TOTAL" in line:
+            continue
+        
+        # Verificação simplificada para linhas de item - procurar padrão XXX.NNNNN precedido por espaços
+        # Usamos abordagem de índice em vez de regex
+        stripped_line = line.strip()
+        
+        if (len(stripped_line) > 9 and 
+            stripped_line[3] == '.' and 
+            stripped_line[:3].isalpha() and 
+            stripped_line[:3].isupper() and
+            stripped_line[4:9].isdigit()):
+            
+            # Fazer diagnóstico detalhado para as 3 primeiras linhas com itens encontradas
+            if len(itens) < 3:
+                app.logger.debug(f"Analisando linha {i+1} que parece conter um item")
+                diagnosticar_linha_lst(line, i+1)
+            
+            try:
+                # Extrair dados usando um método simplificado
+                parts = stripped_line.split()
+                
+                if len(parts) >= 4:  # Deve ter pelo menos item, partes da descrição, quantidade e data
+                    item_code = parts[0]
+                    
+                    # A data está normalmente no final (último campo)
+                    item_date = parts[-1]
+                    
+                    # Quantidade está tipicamente antes da data, no formato 99,999
+                    quantidade_idx = -3  # Considerando: quantidade, 0,000, data
+                    quantidade_str = parts[quantidade_idx].replace('.', '').replace(',', '.')
+                    
+                    try:
+                        item_qty = float(quantidade_str)
+                    except ValueError:
+                        # Tentar encontrar a quantidade olhando para um padrão com vírgula
+                        for idx, part in enumerate(parts):
+                            if ',' in part and part.replace('.', '').replace(',', '').isdigit():
+                                quantidade_str = part.replace('.', '').replace(',', '.')
+                                item_qty = float(quantidade_str)
+                                quantidade_idx = idx
+                                break
+                        else:
+                            app.logger.warning(f"Não foi possível encontrar quantidade na linha {i+1}")
+                            continue
+                    
+                    # Descrição é tudo entre o código e a quantidade
+                    desc_end_idx = quantidade_idx
+                    desc_parts = parts[1:desc_end_idx]
+                    item_desc = ' '.join(desc_parts)
+                    
+                    # Validações adicionais
+                    if not re.match(r'\d{2}/\d{2}/\d{4}', item_date):
+                        app.logger.warning(f"Data inválida na linha {i+1}: {item_date}")
+                        continue
+                    
+                    app.logger.debug(f"Item extraído: código={item_code}, desc={item_desc}, qtd={item_qty}, data={item_date}")
+                    
+                    # Verificar se existe uma INC em andamento para este item
+                    inc = INC.query.filter_by(
+                        item=item_code, 
+                        status='Em andamento'
+                    ).first()
+                    
+                    # Verificar correspondência de quantidade
+                    inc_match = False
+                    if inc:
+                        # Tolerância para diferenças de arredondamento
+                        tolerancia = 0.01
+                        inc_match = abs(inc.quantidade_com_defeito - item_qty) < tolerancia
+                    
+                    if inc and inc_match:
+                        tipo_defeito = "Recebimento"
+                        inc_id = inc.id
+                        app.logger.debug(f"Item {item_code} associado à INC #{inc.id} (Recebimento)")
+                    else:
+                        tipo_defeito = "Produção"
+                        inc_id = None
+                        app.logger.debug(f"Item {item_code} classificado como defeito de Produção")
+                    
+                    # Adicionar à lista de itens
+                    itens.append({
+                        'item': item_code,
+                        'descricao': item_desc,
+                        'quantidade': item_qty,
+                        'data_ultima_movimentacao': item_date,
+                        'tipo_defeito': tipo_defeito,
+                        'inc_id': inc_id
+                    })
+                else:
+                    app.logger.warning(f"Linha {i+1} não tem campos suficientes: {stripped_line}")
+            
+            except Exception as e:
+                app.logger.error(f"Erro ao processar linha {i+1}: {str(e)}")
+                app.logger.error(f"Linha com erro: {line}")
+    
+    app.logger.info(f"Total de itens processados: {len(itens)}")
+    
+    return itens
+
+@app.route('/api/atualizar_status_prateleira', methods=['POST'])
+@login_required
+def api_atualizar_status_prateleira():
+    """API para atualizar o status de um item na prateleira (ex: finalizar inspeção)"""
+    data = request.json
+    if not data or 'item_id' not in data:
+        return jsonify({'success': False, 'error': 'Dados incompletos'}), 400
+    
+    item_id = data.get('item_id')
+    novo_status = data.get('status')
+    
+    try:
+        item = PrateleiraNaoConforme.query.get_or_404(item_id)
+        
+        # Implementar as regras específicas para cada tipo de atualização
+        if novo_status == 'finalizar':
+            # Se o item tem uma INC associada, marcá-la como concluída
+            if item.inc_id:
+                inc = INC.query.get(item.inc_id)
+                if inc:
+                    inc.status = 'Concluída'
+                    db.session.commit()
+                    
+            # Remover o item da prateleira
+            db.session.delete(item)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Item removido da prateleira'})
+        
+        return jsonify({'success': False, 'error': 'Ação não suportada'}), 400
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # =====================================
 # ROTAS PARA SOLICITAÇÃO DE FATURAMENTO

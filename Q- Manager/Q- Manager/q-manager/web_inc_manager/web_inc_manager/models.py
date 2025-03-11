@@ -72,3 +72,22 @@ class ItemSolicitacaoFaturamento(db.Model):
     inc_id = db.Column(db.Integer, db.ForeignKey('inc.id'), nullable=False)
     inc = db.relationship('INC')
     quantidade = db.Column(db.Integer, nullable=False)
+    
+class PrateleiraNaoConforme(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    item = db.Column(db.String(20), nullable=False)
+    descricao = db.Column(db.String(255), nullable=False)
+    quantidade = db.Column(db.Float, nullable=False)
+    data_ultima_movimentacao = db.Column(db.String(10), nullable=False)
+    data_importacao = db.Column(db.DateTime, default=datetime.utcnow)
+    tipo_defeito = db.Column(db.String(20), nullable=False, default="Produção")  # "Recebimento" ou "Produção"
+    inc_id = db.Column(db.Integer, db.ForeignKey('inc.id'), nullable=True)
+    inc = db.relationship('INC', backref=db.backref('itens_prateleira', lazy=True))
+    
+    @property
+    def age_in_hours(self):
+        """Retorna a idade dos dados em horas."""
+        if self.data_importacao:
+            delta = datetime.utcnow() - self.data_importacao
+            return delta.total_seconds() / 3600
+        return 0
