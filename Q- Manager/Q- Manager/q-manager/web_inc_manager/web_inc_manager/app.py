@@ -931,8 +931,8 @@ def atualizar_prateleira_nao_conforme():
             # Limpar os dados antigos
             db.session.query(PrateleiraNaoConforme).delete()
             
-            # Processar o arquivo LST
-            itens_processados = processar_arquivo_lst_prateleira(filepath)
+            # Processar o arquivo LST - Agora a função retorna também as notificações
+            itens_processados, notificacoes_faturamento = processar_arquivo_lst_prateleira(filepath)
             
             if not itens_processados:
                 flash('Nenhum item encontrado no arquivo. Verifique se o formato está correto.', 'warning')
@@ -956,6 +956,16 @@ def atualizar_prateleira_nao_conforme():
                 }
             )
             
+            # Exibir notificações sobre solicitações de faturamento pendentes
+            for notificacao in notificacoes_faturamento:
+                flash(
+                    f'O item {notificacao["item"]} possui uma solicitação de faturamento '
+                    f'#{notificacao["solicitacao_numero"]} de {notificacao["data_solicitacao"]} '
+                    f'que ainda não foi faturada pelo Recebimento. '
+                    f'<a href="{url_for("visualizar_solicitacao_faturamento", solicitacao_id=notificacao["solicitacao_id"])}">Ver solicitação</a>', 
+                    'warning'
+                )
+            
             flash(f'Prateleira não conforme atualizada com sucesso! {len(itens_processados)} itens processados.', 'success')
             return redirect(url_for('listar_prateleira_nao_conforme'))
             
@@ -974,6 +984,7 @@ def atualizar_prateleira_nao_conforme():
 def processar_arquivo_lst_prateleira(filepath):
     """Processa um arquivo LST e retorna os itens para a prateleira não conforme"""
     itens = []
+    notificacoes_faturamento = []  # Lista para armazenar notificações
     
     # Detectar a codificação do arquivo
     with open(filepath, 'rb') as f:
@@ -1058,6 +1069,30 @@ def processar_arquivo_lst_prateleira(filepath):
                         status='Em andamento'
                     ).first()
                     
+                    # Também verificar se existe uma INC concluída que está em uma solicitação de faturamento
+                    inc_concluida = INC.query.filter_by(
+                        item=item_code, 
+                        status='Concluída'
+                    ).first()
+                    
+                    # Se há uma INC concluída, verificar se ela está em alguma solicitação de faturamento
+                    if inc_concluida:
+                        solicitacao_item = ItemSolicitacaoFaturamento.query.filter_by(
+                            inc_id=inc_concluida.id
+                        ).first()
+                        
+                        if solicitacao_item:
+                            # Buscar a solicitação de faturamento completa
+                            solicitacao = SolicitacaoFaturamento.query.get(solicitacao_item.solicitacao_id)
+                            
+                            # Adicionar notificação
+                            notificacoes_faturamento.append({
+                                'item': item_code,
+                                'solicitacao_numero': solicitacao.numero,
+                                'solicitacao_id': solicitacao.id,
+                                'data_solicitacao': solicitacao.data_criacao.strftime('%d/%m/%Y')
+                            })
+                    
                     # Verificar correspondência de quantidade
                     inc_match = False
                     if inc:
@@ -1092,7 +1127,8 @@ def processar_arquivo_lst_prateleira(filepath):
     
     app.logger.info(f"Total de itens processados: {len(itens)}")
     
-    return itens
+    # Retornar tanto os itens quanto as notificações
+    return itens, notificacoes_faturamento
 
 @app.route('/api/atualizar_status_prateleira', methods=['POST'])
 @login_required
