@@ -18,7 +18,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import csv
-from models import db, User, INC, LayoutSetting, Fornecedor, RotinaInspecao, SolicitacaoFaturamento, ItemSolicitacaoFaturamento, PrateleiraNaoConforme, UserActivityLog
+from models import db, User, INC, LayoutSetting, Fornecedor, RotinaInspecao, SolicitacaoFaturamento, ItemSolicitacaoFaturamento, PrateleiraNaoConforme, UserActivityLog, InspectionPlan, InspectionActivity, InspectionMethod, ActivityDenomination
 from config import Config
 
 app = Flask(__name__)
@@ -2550,6 +2550,394 @@ def cadastrar_fornecedor():
 
     return render_template('cadastrar_fornecedor.html')
 
+
+# =====================================
+# ROTAS PLANO INSPEÇÃO
+# =====================================
+# Add these routes to app.py
+
+@app.route('/planos_inspecao')
+@login_required
+def listar_planos_inspecao():
+    """Lista os planos de inspeção cadastrados"""
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    planos = InspectionPlan.query.order_by(InspectionPlan.item).all()
+    
+    # Registrar visualização dos planos
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="planos_inspecao",
+        details={"count": len(planos)}
+    )
+    
+    return render_template('listar_planos_inspecao.html', planos=planos)
+
+@app.route('/novo_plano_inspecao', methods=['GET', 'POST'])
+@login_required
+def novo_plano_inspecao():
+    """Cria um novo plano de inspeção"""
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    if request.method == 'POST':
+        item = request.form['item'].upper()
+        
+        # Validar o formato do item
+        if not validate_item_format(item):
+            flash('Formato do item inválido. Deve ser 3 letras maiúsculas, ponto e 5 dígitos, ex: MPR.02199', 'danger')
+            return redirect(url_for('novo_plano_inspecao'))
+        
+        # Verificar se é uma atividade existente ou nova
+        activity_option = request.form['activity_option']
+        
+        if activity_option == 'existing':
+            activity_id = request.form['activity_id']
+            activity = InspectionActivity.query.get_or_404(activity_id)
+        else:
+            # Criar nova atividade
+            activity_name = request.form['new_activity']
+            
+            if not activity_name:
+                flash('Nome da atividade é obrigatório', 'danger')
+                return redirect(url_for('novo_plano_inspecao'))
+            
+            # Verificar se já existe
+            existing_activity = InspectionActivity.query.filter_by(name=activity_name).first()
+            if existing_activity:
+                activity = existing_activity
+            else:
+                activity = InspectionActivity(name=activity_name)
+                db.session.add(activity)
+                db.session.flush()  # Para obter o ID
+        
+        # Verificar se é uma denominação existente ou nova
+        denomination_option = request.form['denomination_option']
+        
+        if denomination_option == 'existing':
+            denomination_id = request.form['denomination_id']
+            denomination = ActivityDenomination.query.get_or_404(denomination_id)
+        else:
+            # Criar nova denominação
+            denomination_name = request.form['new_denomination']
+            
+            if not denomination_name:
+                flash('Nome da denominação é obrigatório', 'danger')
+                return redirect(url_for('novo_plano_inspecao'))
+            
+            # Verificar se já existe para esta atividade
+            existing_denomination = ActivityDenomination.query.filter_by(
+                name=denomination_name, 
+                activity_id=activity.id
+            ).first()
+            
+            if existing_denomination:
+                denomination = existing_denomination
+            else:
+                denomination = ActivityDenomination(
+                    name=denomination_name,
+                    activity_id=activity.id
+                )
+                db.session.add(denomination)
+                db.session.flush()  # Para obter o ID
+        
+        # Verificar se é um método existente ou novo
+        method_option = request.form['method_option']
+        
+        if method_option == 'existing':
+            method_id = request.form['method_id']
+            method = InspectionMethod.query.get_or_404(method_id)
+        else:
+            # Criar novo método
+            method_name = request.form['new_method']
+            
+            if not method_name:
+                flash('Nome do método é obrigatório', 'danger')
+                return redirect(url_for('novo_plano_inspecao'))
+            
+            # Verificar se já existe
+            existing_method = InspectionMethod.query.filter_by(name=method_name).first()
+            if existing_method:
+                method = existing_method
+            else:
+                method = InspectionMethod(name=method_name)
+                db.session.add(method)
+                db.session.flush()  # Para obter o ID
+        
+        # Verificar se já existe um plano para este item
+        existing_plan = InspectionPlan.query.filter_by(item=item).first()
+        if existing_plan:
+            flash(f'Já existe um plano de inspeção para o item {item}', 'warning')
+            return redirect(url_for('editar_plano_inspecao', plano_id=existing_plan.id))
+        
+        # Criar o plano de inspeção
+        plano = InspectionPlan(
+            item=item,
+            activity_id=activity.id,
+            denomination_id=denomination.id,
+            method_id=method.id,
+            created_by=current_user.id
+        )
+        
+        db.session.add(plano)
+        db.session.commit()
+        
+        # Registrar a criação do plano
+        log_user_activity(
+            user_id=current_user.id,
+            action="create",
+            entity_type="plano_inspecao",
+            entity_id=plano.id,
+            details={
+                "item": item,
+                "activity": activity.name,
+                "denomination": denomination.name,
+                "method": method.name
+            }
+        )
+        
+        flash('Plano de inspeção criado com sucesso!', 'success')
+        return redirect(url_for('listar_planos_inspecao'))
+    
+    # Obter dados para os selects
+    activities = InspectionActivity.query.all()
+    methods = InspectionMethod.query.all()
+    
+    return render_template('novo_plano_inspecao.html', 
+                          activities=activities,
+                          methods=methods)
+
+@app.route('/editar_plano_inspecao/<int:plano_id>', methods=['GET', 'POST'])
+@login_required
+def editar_plano_inspecao(plano_id):
+    """Edita um plano de inspeção existente"""
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    plano = InspectionPlan.query.get_or_404(plano_id)
+    
+    if request.method == 'POST':
+        # Salvar valores originais para o log
+        original_values = {
+            'activity_id': plano.activity_id,
+            'denomination_id': plano.denomination_id,
+            'method_id': plano.method_id
+        }
+        
+        # Verificar se é uma atividade existente ou nova
+        activity_option = request.form['activity_option']
+        
+        if activity_option == 'existing':
+            activity_id = request.form['activity_id']
+            activity = InspectionActivity.query.get_or_404(activity_id)
+        else:
+            # Criar nova atividade
+            activity_name = request.form['new_activity']
+            
+            if not activity_name:
+                flash('Nome da atividade é obrigatório', 'danger')
+                return redirect(url_for('editar_plano_inspecao', plano_id=plano_id))
+            
+            # Verificar se já existe
+            existing_activity = InspectionActivity.query.filter_by(name=activity_name).first()
+            if existing_activity:
+                activity = existing_activity
+            else:
+                activity = InspectionActivity(name=activity_name)
+                db.session.add(activity)
+                db.session.flush()  # Para obter o ID
+        
+        # Verificar se é uma denominação existente ou nova
+        denomination_option = request.form['denomination_option']
+        
+        if denomination_option == 'existing':
+            denomination_id = request.form['denomination_id']
+            denomination = ActivityDenomination.query.get_or_404(denomination_id)
+        else:
+            # Criar nova denominação
+            denomination_name = request.form['new_denomination']
+            
+            if not denomination_name:
+                flash('Nome da denominação é obrigatório', 'danger')
+                return redirect(url_for('editar_plano_inspecao', plano_id=plano_id))
+            
+            # Verificar se já existe para esta atividade
+            existing_denomination = ActivityDenomination.query.filter_by(
+                name=denomination_name, 
+                activity_id=activity.id
+            ).first()
+            
+            if existing_denomination:
+                denomination = existing_denomination
+            else:
+                denomination = ActivityDenomination(
+                    name=denomination_name,
+                    activity_id=activity.id
+                )
+                db.session.add(denomination)
+                db.session.flush()  # Para obter o ID
+        
+        # Verificar se é um método existente ou novo
+        method_option = request.form['method_option']
+        
+        if method_option == 'existing':
+            method_id = request.form['method_id']
+            method = InspectionMethod.query.get_or_404(method_id)
+        else:
+            # Criar novo método
+            method_name = request.form['new_method']
+            
+            if not method_name:
+                flash('Nome do método é obrigatório', 'danger')
+                return redirect(url_for('editar_plano_inspecao', plano_id=plano_id))
+            
+            # Verificar se já existe
+            existing_method = InspectionMethod.query.filter_by(name=method_name).first()
+            if existing_method:
+                method = existing_method
+            else:
+                method = InspectionMethod(name=method_name)
+                db.session.add(method)
+                db.session.flush()  # Para obter o ID
+        
+        # Identificar mudanças para o log
+        changes = {}
+        if activity.id != plano.activity_id:
+            changes['activity'] = {
+                'old': InspectionActivity.query.get(plano.activity_id).name,
+                'new': activity.name
+            }
+        
+        if denomination.id != plano.denomination_id:
+            changes['denomination'] = {
+                'old': ActivityDenomination.query.get(plano.denomination_id).name,
+                'new': denomination.name
+            }
+        
+        if method.id != plano.method_id:
+            changes['method'] = {
+                'old': InspectionMethod.query.get(plano.method_id).name,
+                'new': method.name
+            }
+        
+        # Atualizar o plano
+        plano.activity_id = activity.id
+        plano.denomination_id = denomination.id
+        plano.method_id = method.id
+        plano.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Registrar a atualização do plano
+        if changes:
+            log_user_activity(
+                user_id=current_user.id,
+                action="update",
+                entity_type="plano_inspecao",
+                entity_id=plano.id,
+                details={
+                    "item": plano.item,
+                    "changes": changes
+                }
+            )
+        
+        flash('Plano de inspeção atualizado com sucesso!', 'success')
+        return redirect(url_for('listar_planos_inspecao'))
+    
+    # Obter dados para os selects
+    activities = InspectionActivity.query.all()
+    denominations = ActivityDenomination.query.filter_by(activity_id=plano.activity_id).all()
+    methods = InspectionMethod.query.all()
+    
+    return render_template('editar_plano_inspecao.html', 
+                          plano=plano,
+                          activities=activities,
+                          denominations=denominations,
+                          methods=methods)
+
+@app.route('/excluir_plano_inspecao/<int:plano_id>', methods=['POST'])
+@login_required
+def excluir_plano_inspecao(plano_id):
+    """Exclui um plano de inspeção"""
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('rotina_inspecao'):
+        flash('Acesso negado. Você não tem permissão para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    plano = InspectionPlan.query.get_or_404(plano_id)
+    
+    # Registrar a exclusão do plano
+    log_user_activity(
+        user_id=current_user.id,
+        action="delete",
+        entity_type="plano_inspecao",
+        entity_id=plano.id,
+        details={
+            "item": plano.item,
+            "activity": plano.activity.name,
+            "denomination": plano.denomination.name,
+            "method": plano.method.name
+        }
+    )
+    
+    db.session.delete(plano)
+    db.session.commit()
+    
+    flash('Plano de inspeção excluído com sucesso!', 'success')
+    return redirect(url_for('listar_planos_inspecao'))
+
+@app.route('/api/denominacoes_por_atividade/<int:activity_id>')
+@login_required
+def api_denominacoes_por_atividade(activity_id):
+    """API para buscar denominações por atividade"""
+    denominations = ActivityDenomination.query.filter_by(activity_id=activity_id).all()
+    return jsonify({
+        'denominations': [{'id': d.id, 'name': d.name} for d in denominations]
+    })
+
+@app.route('/api/plano_inspecao/<path:item>')
+@login_required
+def api_plano_inspecao(item):
+    """API para buscar o plano de inspeção para um item"""
+    # Decodificar o item, pois pode conter caracteres especiais
+    item = item.upper().strip()
+    
+    # Buscar o plano de inspeção para este item
+    plano = InspectionPlan.query.filter_by(item=item).first()
+    
+    if plano:
+        # Verificar se existem INCs para este item
+        incs = INC.query.filter_by(item=item).all()
+        
+        return jsonify({
+            'success': True,
+            'item': item,
+            'has_plan': True,
+            'plan': {
+                'id': plano.id,
+                'activity': plano.activity.name,
+                'denomination': plano.denomination.name,
+                'method': plano.method.name
+            },
+            'has_incs': len(incs) > 0,
+            'incs_count': len(incs)
+        })
+    else:
+        return jsonify({
+            'success': True,
+            'item': item,
+            'has_plan': False
+        })
+
+
 # =====================================
 # ROTAS DE INSPEÇÃO
 # =====================================
@@ -2593,46 +2981,67 @@ def set_crm_token():
 @app.route('/api/historico_incs/<path:item>', methods=['GET'])
 @login_required
 def api_historico_incs(item):
-    # Decodificar o item, pois pode conter caracteres especiais
-    item = item.upper().strip()
-    
-    # Buscar histórico de INCs para este item
-    incs = INC.query.filter_by(item=item).order_by(INC.id.desc()).all()
-    
-    # Registrar consulta de histórico do item
-    log_user_activity(
-        user_id=current_user.id,
-        action="query",
-        entity_type="item_history",
-        details={
-            "item": item,
-            "count": len(incs)
-        }
-    )
-    
-    # Converter para JSON
-    incs_json = []
-    for inc in incs:
-        incs_json.append({
-            'id': inc.id,
-            'nf': inc.nf,
-            'data': inc.data,
-            'representante': inc.representante,
-            'fornecedor': inc.fornecedor,
-            'quantidade_recebida': inc.quantidade_recebida,
-            'quantidade_com_defeito': inc.quantidade_com_defeito,
-            'descricao_defeito': inc.descricao_defeito[:100] + '...' if len(inc.descricao_defeito) > 100 else inc.descricao_defeito,
-            'urgencia': inc.urgencia,
-            'status': inc.status,
-            'oc': inc.oc
+    """API para buscar o histórico de INCs para um item"""
+    try:
+        # Decodificar o item, pois pode conter caracteres especiais
+        item = item.upper().strip()
+        app.logger.info(f"Buscando histórico de INCs para item: {item}")
+        
+        # Buscar histórico de INCs para este item
+        incs = INC.query.filter_by(item=item).order_by(INC.id.desc()).all()
+        app.logger.info(f"Encontradas {len(incs)} INCs para o item {item}")
+        
+        # Registrar consulta de histórico do item
+        log_user_activity(
+            user_id=current_user.id,
+            action="query",
+            entity_type="item_history",
+            details={
+                "item": item,
+                "count": len(incs)
+            }
+        )
+        
+        # Converter para JSON
+        incs_json = []
+        for inc in incs:
+            try:
+                # Truncar descrição muito longa
+                descricao = inc.descricao_defeito or ""
+                descricao_truncada = descricao[:100] + '...' if len(descricao) > 100 else descricao
+                
+                incs_json.append({
+                    'id': inc.id,
+                    'nf': inc.nf,
+                    'data': inc.data,
+                    'representante': inc.representante_nome or inc.representante,
+                    'fornecedor': inc.fornecedor,
+                    'quantidade_recebida': inc.quantidade_recebida,
+                    'quantidade_com_defeito': inc.quantidade_com_defeito,
+                    'descricao_defeito': descricao_truncada,
+                    'urgencia': inc.urgencia,
+                    'status': inc.status,
+                    'oc': inc.oc
+                })
+            except Exception as e:
+                app.logger.error(f"Erro ao processar INC {inc.id}: {str(e)}")
+        
+        return jsonify({
+            'success': True,
+            'item': item, 
+            'incs': incs_json, 
+            'total': len(incs_json)
         })
+    except Exception as e:
+        app.logger.error(f"Erro na API de histórico de INCs: {str(e)}")
+        return jsonify({
+            'success': False,
+            'item': item,
+            'incs': [],
+            'total': 0,
+            'error': str(e)
+        }), 500
     
-    return jsonify({
-        'item': item, 
-        'incs': incs_json, 
-        'total': len(incs_json)
-    })
-
 @app.route('/rotina_inspecao', methods=['GET', 'POST'])
 @login_required
 def rotina_inspecao():

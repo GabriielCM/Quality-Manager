@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-edit me-2"></i>Editar Plano de Inspeção - {{ plano.item }}
+            </h5>
+            <div>
+                <a href="{{ url_for('listar_planos_inspecao') }}" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('editar_plano_inspecao', plano_id=plano.id) }}">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-header">Identificação do Item</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="item" class="form-label">Item</label>
+                                    <input type="text" class="form-control" id="item" value="{{ plano.item }}" readonly>
+                                    <small class="form-text text-muted">
+                                        O código do item não pode ser alterado
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-header">Atividade de Inspeção</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="activity_option" id="existing_activity" value="existing" checked>
+                                        <label class="form-check-label" for="existing_activity">Selecionar Existente</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="activity_option" id="new_activity_option" value="new">
+                                        <label class="form-check-label" for="new_activity_option">Criar Nova</label>
+                                    </div>
+                                </div>
+                                
+                                <div id="existing_activity_div" class="mb-3">
+                                    <label for="activity_id" class="form-label">Atividade *</label>
+                                    <select class="form-select" id="activity_id" name="activity_id" required>
+                                        <option value="">Selecione uma atividade</option>
+                                        {% for activity in activities %}
+                                        <option value="{{ activity.id }}" {% if activity.id == plano.activity_id %}selected{% endif %}>
+                                            {{ activity.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div id="new_activity_div" class="mb-3" style="display: none;">
+                                    <label for="new_activity" class="form-label">Nova Atividade *</label>
+                                    <input type="text" class="form-control" id="new_activity" name="new_activity">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-header">Denominação da Atividade</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="denomination_option" id="existing_denomination" value="existing" checked>
+                                        <label class="form-check-label" for="existing_denomination">Selecionar Existente</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="denomination_option" id="new_denomination_option" value="new">
+                                        <label class="form-check-label" for="new_denomination_option">Criar Nova</label>
+                                    </div>
+                                </div>
+                                
+                                <div id="existing_denomination_div" class="mb-3">
+                                    <label for="denomination_id" class="form-label">Denominação *</label>
+                                    <select class="form-select" id="denomination_id" name="denomination_id" required>
+                                        {% for denomination in denominations %}
+                                        <option value="{{ denomination.id }}" {% if denomination.id == plano.denomination_id %}selected{% endif %}>
+                                            {{ denomination.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div id="new_denomination_div" class="mb-3" style="display: none;">
+                                    <label for="new_denomination" class="form-label">Nova Denominação *</label>
+                                    <input type="text" class="form-control" id="new_denomination" name="new_denomination">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-header">Método de Inspeção</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="method_option" id="existing_method" value="existing" checked>
+                                        <label class="form-check-label" for="existing_method">Selecionar Existente</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="method_option" id="new_method_option" value="new">
+                                        <label class="form-check-label" for="new_method_option">Criar Novo</label>
+                                    </div>
+                                </div>
+                                
+                                <div id="existing_method_div" class="mb-3">
+                                    <label for="method_id" class="form-label">Método *</label>
+                                    <select class="form-select" id="method_id" name="method_id" required>
+                                        <option value="">Selecione um método</option>
+                                        {% for method in methods %}
+                                        <option value="{{ method.id }}" {% if method.id == plano.method_id %}selected{% endif %}>
+                                            {{ method.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div id="new_method_div" class="mb-3" style="display: none;">
+                                    <label for="new_method" class="form-label">Novo Método *</label>
+                                    <input type="text" class="form-control" id="new_method" name="new_method">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('listar_planos_inspecao') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i> Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle de campos de atividade
+    const existingActivityRadio = document.getElementById('existing_activity');
+    const newActivityRadio = document.getElementById('new_activity_option');
+    const existingActivityDiv = document.getElementById('existing_activity_div');
+    const newActivityDiv = document.getElementById('new_activity_div');
+    
+    existingActivityRadio.addEventListener('change', function() {
+        if (this.checked) {
+            existingActivityDiv.style.display = 'block';
+            newActivityDiv.style.display = 'none';
+            document.getElementById('activity_id').required = true;
+            document.getElementById('new_activity').required = false;
+        }
+    });
+    
+    newActivityRadio.addEventListener('change', function() {
+        if (this.checked) {
+            existingActivityDiv.style.display = 'none';
+            newActivityDiv.style.display = 'block';
+            document.getElementById('activity_id').required = false;
+            document.getElementById('new_activity').required = true;
+        }
+    });
+    
+    // Toggle de campos de denominação
+    const existingDenominationRadio = document.getElementById('existing_denomination');
+    const newDenominationRadio = document.getElementById('new_denomination_option');
+    const existingDenominationDiv = document.getElementById('existing_denomination_div');
+    const newDenominationDiv = document.getElementById('new_denomination_div');
+    
+    existingDenominationRadio.addEventListener('change', function() {
+        if (this.checked) {
+            existingDenominationDiv.style.display = 'block';
+            newDenominationDiv.style.display = 'none';
+            document.getElementById('denomination_id').required = true;
+            document.getElementById('new_denomination').required = false;
+        }
+    });
+    
+    newDenominationRadio.addEventListener('change', function() {
+        if (this.checked) {
+            existingDenominationDiv.style.display = 'none';
+            newDenominationDiv.style.display = 'block';
+            document.getElementById('denomination_id').required = false;
+            document.getElementById('new_denomination').required = true;
+        }
+    });
+    
+    // Toggle de campos de método
+    const existingMethodRadio = document.getElementById('existing_method');
+    const newMethodRadio = document.getElementById('new_method_option');
+    const existingMethodDiv = document.getElementById('existing_method_div');
+    const newMethodDiv = document.getElementById('new_method_div');
+    
+    existingMethodRadio.addEventListener('change', function() {
+        if (this.checked) {
+            existingMethodDiv.style.display = 'block';
+            newMethodDiv.style.display = 'none';
+            document.getElementById('method_id').required = true;
+            document.getElementById('new_method').required = false;
+        }
+    });
+    
+    newMethodRadio.addEventListener('change', function() {
+        if (this.checked) {
+            existingMethodDiv.style.display = 'none';
+            newMethodDiv.style.display = 'block';
+            document.getElementById('method_id').required = false;
+            document.getElementById('new_method').required = true;
+        }
+    });
+    
+    // Carregar denominações quando a atividade mudar
+    const activitySelect = document.getElementById('activity_id');
+    const denominationSelect = document.getElementById('denomination_id');
+    
+    activitySelect.addEventListener('change', function() {
+        const activityId = this.value;
+        
+        if (!activityId) {
+            // Limpar select de denominações
+            denominationSelect.innerHTML = '<option value="">Selecione uma atividade primeiro</option>';
+            return;
+        }
+        
+        // Buscar denominações para esta atividade
+        fetch(`/api/denominacoes_por_atividade/${activityId}`)
+            .then(response => response.json())
+            .then(data => {
+                denominationSelect.innerHTML = '<option value="">Selecione uma denominação</option>';
+                
+                data.denominations.forEach(denomination => {
+                    const option = document.createElement('option');
+                    option.value = denomination.id;
+                    option.textContent = denomination.name;
+                    denominationSelect.appendChild(option);
+                });
+                
+                if (data.denominations.length === 0) {
+                    denominationSelect.innerHTML = '<option value="">Nenhuma denominação encontrada</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao buscar denominações:', error);
+                denominationSelect.innerHTML = '<option value="">Erro ao carregar denominações</option>';
+            });
+    });
+});
+</script>
+{% endblock %}

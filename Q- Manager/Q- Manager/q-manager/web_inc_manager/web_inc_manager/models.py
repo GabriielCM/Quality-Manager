@@ -135,3 +135,43 @@ class UserActivityLog(db.Model):
     
     def __repr__(self):
         return f'<UserActivityLog {self.id}: {self.user.username} {self.action} {self.entity_type}>'
+
+
+class InspectionActivity(db.Model):
+    """Model for inspection activities"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    denominations = db.relationship('ActivityDenomination', backref='activity', lazy=True)
+
+class ActivityDenomination(db.Model):
+    """Model for activity denominations"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    activity_id = db.Column(db.Integer, db.ForeignKey('inspection_activity.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class InspectionMethod(db.Model):
+    """Model for inspection methods"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class InspectionPlan(db.Model):
+    """Model for inspection plans"""
+    id = db.Column(db.Integer, primary_key=True)
+    item = db.Column(db.String(20), nullable=False, index=True)
+    activity_id = db.Column(db.Integer, db.ForeignKey('inspection_activity.id'), nullable=False)
+    denomination_id = db.Column(db.Integer, db.ForeignKey('activity_denomination.id'), nullable=False)
+    method_id = db.Column(db.Integer, db.ForeignKey('inspection_method.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    
+    # Relationships
+    activity = db.relationship('InspectionActivity')
+    denomination = db.relationship('ActivityDenomination')
+    method = db.relationship('InspectionMethod')
+    creator = db.relationship('User')

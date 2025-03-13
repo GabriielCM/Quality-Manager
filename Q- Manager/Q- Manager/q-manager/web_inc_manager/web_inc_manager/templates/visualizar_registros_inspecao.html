@@ -10,6 +10,9 @@
                 <a href="{{ url_for('listar_rotinas_inspecao') }}" class="btn btn-sm btn-info">
                     <i class="fas fa-history me-1"></i> Histórico de Inspeções
                 </a>
+                <a href="{{ url_for('listar_planos_inspecao') }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-clipboard-list me-1"></i> Planos de Inspeção
+                </a>
             </div>
         </div>
         <div class="card-body">
@@ -69,6 +72,7 @@
                                     <th>Item</th>
                                     <th>Descrição</th>
                                     <th>Quantidade</th>
+                                    <th>Plano de Inspeção</th>
                                     <th>Status</th>
                                     <th>Ações</th>
                                 </tr>
@@ -79,12 +83,21 @@
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <strong class="item-code" data-item="{{ registro.item }}">{{ registro.item }}</strong>
-                                            <!-- Espaço para o indicador de histórico de INC (será adicionado via JavaScript) -->
+                                            <!-- Espaço para o indicador de histórico de INC e plano (será adicionado via JavaScript) -->
                                             <span class="history-indicator ms-2"></span>
+                                            <span class="plan-indicator ms-2"></span>
                                         </div>
                                     </td>
                                     <td>{{ registro.descricao }}</td>
                                     <td>{{ registro.qtd_recebida }}</td>
+                                    <td class="plan-cell">
+                                        <!-- Conteúdo preenchido via JavaScript -->
+                                        <div class="text-center">
+                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                <span class="visually-hidden">Carregando...</span>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td class="status-cell" data-inspecionado="{{ registro.inspecionado|lower }}" data-adiado="{{ registro.adiado|lower }}">
                                         {% if registro.inspecionado %}
                                             <span class="badge bg-success">
@@ -221,11 +234,76 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para exibir detalhes do plano de inspeção -->
+<div class="modal fade" id="planoInspecaoModal" tabindex="-1" aria-labelledby="planoInspecaoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="planoInspecaoModalLabel">
+                    <i class="fas fa-clipboard-list me-2"></i>Plano de Inspeção: <span id="modalPlanItemCode"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-3" id="loadingPlano">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Buscando plano de inspeção...</p>
+                </div>
+                
+                <div id="planoContent" style="display:none;">
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Atenção!</strong> Siga atentamente as instruções do plano de inspeção.
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header">Atividade de Inspeção</div>
+                        <div class="card-body">
+                            <h5 id="planoAtividade" class="card-title">-</h5>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header">Denominação da Atividade</div>
+                        <div class="card-body">
+                            <h5 id="planoDenominacao" class="card-title">-</h5>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header">Método de Inspeção</div>
+                        <div class="card-body">
+                            <h5 id="planoMetodo" class="card-title">-</h5>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="semPlano" class="alert alert-warning text-center" style="display:none;">
+                    <i class="fas fa-exclamation-circle me-2"></i> Este item não possui plano de inspeção cadastrado.
+                    <div class="mt-2">
+                        <a href="#" id="criarPlanoLink" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus-circle me-1"></i> Criar Plano
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <a href="#" id="editarPlanoLink" class="btn btn-warning" style="display:none;">
+                    <i class="fas fa-edit me-1"></i> Editar Plano
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Função melhorada para salvar e submeter o formulário
+// Função para salvar e submeter o formulário
 function saveAndSubmit(form, action, ar, index) {
     // Salva a posição de rolagem atual
     const scrollPosition = window.scrollY || window.pageYOffset;
@@ -310,20 +388,34 @@ function updateProgressBar() {
     }
 }
 
-// Função para verificar histórico de INCs para um item
+// Função para verificar histórico de INCs para um item - com melhor tratamento de erros
 async function checkIncHistory(item) {
     try {
         // Codificar o item para URL
         const encodedItem = encodeURIComponent(item);
+        console.log('Verificando histórico para item:', item);
         
         // Fazer a requisição para a API
         const response = await fetch(`/api/historico_incs/${encodedItem}`);
+        
+        if (!response.ok) {
+            throw new Error(`API request failed with status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        
+        // Verificar se temos os dados esperados
+        if (!data.hasOwnProperty('total')) {
+            console.error('API response missing total property:', data);
+            throw new Error('API response format is invalid');
+        }
+        
+        console.log(`Item ${item}: ${data.total} INCs encontradas`);
         
         return {
             success: true,
             item: data.item,
-            incs: data.incs,
+            incs: data.incs || [],
             total: data.total
         };
     } catch (error) {
@@ -333,6 +425,27 @@ async function checkIncHistory(item) {
             item: item,
             incs: [],
             total: 0
+        };
+    }
+}
+
+// Função para verificar plano de inspeção para um item
+async function checkInspectionPlan(item) {
+    try {
+        // Codificar o item para URL
+        const encodedItem = encodeURIComponent(item);
+        
+        // Fazer a requisição para a API
+        const response = await fetch(`/api/plano_inspecao/${encodedItem}`);
+        const data = await response.json();
+        
+        return data;
+    } catch (error) {
+        console.error(`Erro ao verificar plano para o item ${item}:`, error);
+        return {
+            success: false,
+            item: item,
+            has_plan: false
         };
     }
 }
@@ -405,36 +518,200 @@ function showIncHistoryModal(item) {
     });
 }
 
-// Função para verificar todos os itens na página
-async function checkAllItems() {
-    const itemElements = document.querySelectorAll('.item-code');
+// Função para exibir o modal com o plano de inspeção
+function showInspectionPlanModal(item) {
+    // Atualizar o título do modal
+    document.getElementById('modalPlanItemCode').textContent = item;
     
-    for (const element of itemElements) {
-        const item = element.getAttribute('data-item');
-        const indicatorElement = element.parentElement.querySelector('.history-indicator');
+    // Mostrar o modal
+    const modal = new bootstrap.Modal(document.getElementById('planoInspecaoModal'));
+    modal.show();
+    
+    // Mostrar o loader e esconder outros conteúdos
+    document.getElementById('loadingPlano').style.display = 'block';
+    document.getElementById('planoContent').style.display = 'none';
+    document.getElementById('semPlano').style.display = 'none';
+    document.getElementById('editarPlanoLink').style.display = 'none';
+    
+    // Configurar link para criar plano
+    const criarPlanoLink = document.getElementById('criarPlanoLink');
+    criarPlanoLink.href = `/novo_plano_inspecao?item=${encodeURIComponent(item)}`;
+    
+    // Buscar o plano de inspeção
+    checkInspectionPlan(item).then(data => {
+        // Esconder o loader
+        document.getElementById('loadingPlano').style.display = 'none';
         
-        // Verificar o histórico
-        const history = await checkIncHistory(item);
+        if (data.success && data.has_plan) {
+            // Preencher os campos com as informações do plano
+            document.getElementById('planoAtividade').textContent = data.plan.activity;
+            document.getElementById('planoDenominacao').textContent = data.plan.denomination;
+            document.getElementById('planoMetodo').textContent = data.plan.method;
+            
+            // Configurar link para editar plano
+            const editarPlanoLink = document.getElementById('editarPlanoLink');
+            editarPlanoLink.href = `/editar_plano_inspecao/${data.plan.id}`;
+            editarPlanoLink.style.display = 'block';
+            
+            // Mostrar o conteúdo
+            document.getElementById('planoContent').style.display = 'block';
+        } else {
+            // Mostrar mensagem de que não há plano
+            document.getElementById('semPlano').style.display = 'block';
+        }
+    });
+}
+
+// Função para atualizar o conteúdo da célula de plano de inspeção
+async function updatePlanCell(itemElement, planCell) {
+    const item = itemElement.getAttribute('data-item');
+    
+    // Buscar o plano de inspeção
+    const planData = await checkInspectionPlan(item);
+    
+    if (planData.success && planData.has_plan) {
+        // Adicionar informações do plano na célula
+        planCell.innerHTML = `
+            <div>
+                <button class="btn btn-sm btn-outline-primary" onclick="showInspectionPlanModal('${item}')">
+                    <i class="fas fa-clipboard-list me-1"></i> Ver Plano
+                </button>
+            </div>
+        `;
         
-        if (history.success && history.total > 0) {
-            // Adicionar ícone de alerta
-            indicatorElement.innerHTML = `
-                <span class="badge bg-danger cursor-pointer history-badge" 
-                      data-item="${item}" 
+        // Adicionar indicador de plano
+        const planIndicator = itemElement.parentElement.querySelector('.plan-indicator');
+        if (planIndicator) {
+            planIndicator.innerHTML = `
+                <span class="badge bg-primary cursor-pointer plan-badge" 
+                      onclick="showInspectionPlanModal('${item}')" 
                       data-bs-toggle="tooltip" 
-                      title="Este item possui ${history.total} INCs em seu histórico. Clique para ver detalhes.">
-                    <i class="fas fa-exclamation-triangle"></i> ${history.total}
+                      title="Este item possui um plano de inspeção. Clique para ver detalhes.">
+                    <i class="fas fa-clipboard-list"></i>
                 </span>
             `;
             
             // Inicializar tooltip
-            new bootstrap.Tooltip(indicatorElement.querySelector('.history-badge'));
-            
-            // Adicionar evento de clique para exibir o modal
-            indicatorElement.querySelector('.history-badge').addEventListener('click', function() {
-                showIncHistoryModal(item);
-            });
+            try {
+                new bootstrap.Tooltip(planIndicator.querySelector('.plan-badge'));
+            } catch (e) {
+                console.error('Erro ao inicializar tooltip do plano:', e);
+            }
         }
+    } else {
+        // Mostrar botão para criar plano
+        planCell.innerHTML = `
+            <div>
+                <a href="/novo_plano_inspecao?item=${encodeURIComponent(item)}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-plus-circle me-1"></i> Criar Plano
+                </a>
+            </div>
+        `;
+    }
+}
+
+// Função para verificar todos os itens na página - com melhor tratamento de erros
+async function checkAllItems() {
+    try {
+        const itemElements = document.querySelectorAll('.item-code');
+        console.log(`Encontrados ${itemElements.length} elementos de item na página`);
+        
+        if (itemElements.length === 0) {
+            console.warn('Nenhum elemento de item encontrado na página');
+            return;
+        }
+        
+        // Primeiro, vamos processar as notificações de INC para todos os itens
+        for (const element of itemElements) {
+            try {
+                const item = element.getAttribute('data-item');
+                if (!item) {
+                    console.warn('Item sem código encontrado', element);
+                    continue;
+                }
+                
+                const row = element.closest('tr');
+                if (!row) {
+                    console.warn('Não foi possível encontrar a linha para o item', item);
+                    continue;
+                }
+                
+                const indicatorElement = element.parentElement.querySelector('.history-indicator');
+                if (!indicatorElement) {
+                    console.warn('Elemento indicador não encontrado para o item', item);
+                    continue;
+                }
+                
+                // Verificar o histórico de INCs
+                const history = await checkIncHistory(item);
+                
+                // Se temos histórico de INCs, exibir a notificação
+                if (history.success && history.total > 0) {
+                    console.log(`Adicionando badge para item ${item} com ${history.total} INCs`);
+                    
+                    // Adicionar ícone de alerta com estilo mais destacado
+                    indicatorElement.innerHTML = `
+                        <span class="badge bg-danger cursor-pointer history-badge" 
+                              data-item="${item}" 
+                              data-bs-toggle="tooltip" 
+                              title="Este item possui ${history.total} INCs em seu histórico. Clique para ver detalhes."
+                              style="font-size: 0.85rem; padding: 0.35em 0.65em; margin-left: 5px;">
+                            <i class="fas fa-exclamation-triangle"></i> ${history.total}
+                        </span>
+                    `;
+                    
+                    // Inicializar tooltip e garantir que seja exibido
+                    try {
+                        const tooltipElement = indicatorElement.querySelector('.history-badge');
+                        const tooltip = new bootstrap.Tooltip(tooltipElement);
+                        
+                        // Adicionar evento de clique para exibir o modal
+                        tooltipElement.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            showIncHistoryModal(item);
+                        });
+                        
+                        // Destacar a linha com uma borda vermelha
+                        row.style.borderLeft = '4px solid #dc3545';
+                        
+                    } catch (tooltipError) {
+                        console.error('Erro ao inicializar tooltip:', tooltipError);
+                    }
+                } else {
+                    console.log(`Item ${item} não tem INCs ou ocorreu um erro na verificação`);
+                }
+                
+                // Pequena pausa para não sobrecarregar o servidor
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (itemError) {
+                console.error('Erro ao processar item:', itemError);
+            }
+        }
+        
+        // Depois, vamos processar os planos de inspeção
+        for (const element of itemElements) {
+            try {
+                const item = element.getAttribute('data-item');
+                if (!item) continue;
+                
+                const planCell = element.closest('tr').querySelector('.plan-cell');
+                if (!planCell) continue;
+                
+                // Atualizar a célula de plano
+                await updatePlanCell(element, planCell);
+                
+                // Pequena pausa para não sobrecarregar o servidor
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (planError) {
+                console.error('Erro ao processar plano:', planError);
+            }
+        }
+        
+    } catch (globalError) {
+        console.error('Erro global ao verificar itens:', globalError);
     }
 }
 
@@ -478,8 +755,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Verificar histórico de INCs para todos os itens
-    checkAllItems();
+    // Verificar histórico de INCs e planos para todos os itens
+    // Adicionando um pequeno atraso para garantir que a página esteja completamente carregada
+    setTimeout(() => {
+        console.log('Iniciando verificação de INCs e planos...');
+        checkAllItems();
+    }, 500);
     
     // Adicionar CSS para cursor pointer
     const style = document.createElement('style');
@@ -487,9 +768,23 @@ document.addEventListener('DOMContentLoaded', function() {
         .cursor-pointer {
             cursor: pointer;
         }
-        .history-badge:hover {
-            background-color: #dc3545 !important;
+        .history-badge:hover, .plan-badge:hover {
+            opacity: 0.8;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .history-badge {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 5px rgba(220, 53, 69, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            }
         }
     `;
     document.head.appendChild(style);
