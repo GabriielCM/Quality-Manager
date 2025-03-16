@@ -7,7 +7,7 @@
                 <i class="fas fa-building me-2"></i>Gerenciar Fornecedores
             </h5>
             <div>
-                <a href="{{ url_for('cadastrar_fornecedor') }}" class="btn btn-primary">
+                <a href="{{ url_for('fornecedor.cadastrar_fornecedor') }}" class="btn btn-primary">
                     <i class="fas fa-plus-circle me-1"></i> Cadastrar Novo Fornecedor
                 </a>
                 <button class="btn btn-outline-primary ms-2" id="viewToggleBtn" data-view="table">
@@ -182,7 +182,7 @@
 <div class="modal fade" id="editModal{{ fornecedor.id }}" tabindex="-1" aria-labelledby="editModalLabel{{ fornecedor.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ url_for('gerenciar_fornecedores') }}" id="editForm{{ fornecedor.id }}">
+            <form method="POST" action="{{ url_for('fornecedor.gerenciar_fornecedores') }}" id="editForm{{ fornecedor.id }}">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="editModalLabel{{ fornecedor.id }}">
                         <i class="fas fa-edit me-2"></i>Editar Fornecedor
@@ -239,7 +239,7 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i> Cancelar
                 </button>
-                <form id="deleteForm" method="POST" action="{{ url_for('gerenciar_fornecedores') }}">
+                <form id="deleteForm" method="POST" action="{{ url_for('fornecedor.gerenciar_fornecedores') }}">
                     <input type="hidden" name="fornecedor_id" id="deleteFornecedorId">
                     <input type="hidden" name="action" value="delete">
                     <button type="submit" class="btn btn-danger">

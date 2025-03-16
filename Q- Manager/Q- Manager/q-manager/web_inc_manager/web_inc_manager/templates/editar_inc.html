@@ -7,14 +7,14 @@
                 <i class="fas fa-edit me-2"></i>Editar INC #{{ inc.nf }}
             </h5>
             <div>
-                <a href="{{ url_for('visualizar_incs') }}" class="btn btn-sm btn-secondary">
+                <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-sm btn-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Voltar
                 </a>
             </div>
         </div>
         <div class="card-body">
             <!-- Main form -->
-            <form method="POST" action="{{ url_for('editar_inc', inc_id=inc.id) }}" enctype="multipart/form-data" id="mainForm">
+            <form method="POST" action="{{ url_for('inc.editar_inc', inc_id=inc.id) }}" enctype="multipart/form-data" id="mainForm">
                 <div class="row">
                     <div class="col-md-6">
                         <div class="card bg-light mb-4">
@@ -26,7 +26,7 @@
                                     <label for="representante" class="form-label">Representante</label>
                                     <select class="form-select" id="representante" name="representante" required>
                                         {% for rep in representantes %}
-                                        <option value="{{ rep }}" {% if rep == inc.representante %}selected{% endif %}>{{ rep }}</option>
+                                        <option value="{{ rep.id }}" {% if rep.id == inc.representante_id %}selected{% endif %}>{{ rep.username }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -109,7 +109,7 @@
                                         <img src="{{ url_for('static', filename=foto) }}" class="card-img-top" alt="Foto">
                                     </div>
                                     <div class="card-body text-center">
-                                        <form action="{{ url_for('remover_foto_inc', inc_id=inc.id, foto=foto) }}" method="POST">
+                                        <form action="{{ url_for('inc.remover_foto_inc', inc_id=inc.id, foto=foto) }}" method="POST">
                                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover esta foto?')">
                                                 <i class="fas fa-trash me-1"></i> Remover
                                             </button>
@@ -127,7 +127,7 @@
 
                 <!-- Regular submit button now uses JavaScript to trigger direct form -->
                 <div class="d-flex justify-content-between">
-                    <a href="{{ url_for('visualizar_incs') }}" class="btn btn-secondary">
+                    <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-secondary">
                         <i class="fas fa-times me-1"></i> Cancelar
                     </a>
                     <button type="button" class="btn btn-primary" id="normalSubmitBtn" onclick="submitDirectForm()">
@@ -137,7 +137,7 @@
             </form>
             
             <!-- Alternative direct submission form (now hidden) -->
-            <form action="{{ url_for('editar_inc', inc_id=inc.id) }}" method="POST" enctype="multipart/form-data" id="directForm" style="display:none;">
+            <form action="{{ url_for('inc.editar_inc', inc_id=inc.id) }}" method="POST" enctype="multipart/form-data" id="directForm" style="display:none;">
                 <!-- Hidden fields -->
                 <input type="hidden" name="representante" id="hidden_representante">
                 <input type="hidden" name="fornecedor" id="hidden_fornecedor">

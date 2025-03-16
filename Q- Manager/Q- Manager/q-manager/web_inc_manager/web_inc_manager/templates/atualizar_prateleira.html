@@ -7,7 +7,7 @@
                 <i class="fas fa-sync-alt me-2"></i>Atualizar Prateleira Não Conforme
             </h5>
             <div>
-                <a href="{{ url_for('listar_prateleira_nao_conforme') }}" class="btn btn-sm btn-secondary">
+                <a href="{{ url_for('prateleira.listar_prateleira_nao_conforme') }}" class="btn btn-sm btn-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Voltar para Prateleira
                 </a>
             </div>
@@ -52,7 +52,7 @@
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{{ url_for('listar_prateleira_nao_conforme') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('prateleira.listar_prateleira_nao_conforme') }}" class="btn btn-secondary">
                                 <i class="fas fa-times me-1"></i> Cancelar
                             </a>
                             <button type="submit" class="btn btn-success" id="submit-btn" disabled>

@@ -39,7 +39,7 @@
             <i class="fas fa-list me-1"></i> Lista de INCs
         </h6>
         <div>
-            <a href="{{ url_for('export_csv') }}" class="btn btn-sm btn-success">
+            <a href="{{ url_for('inc.export_csv') }}" class="btn btn-sm btn-success">
                 <i class="fas fa-file-excel me-1"></i> Exportar CSV
             </a>
         </div>
@@ -84,13 +84,13 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ url_for('detalhes_inc', inc_id=inc.id) }}" class="btn btn-info btn-sm" data-bs-toggle="tooltip" title="Detalhes">
+                            <a href="{{ url_for('inc.detalhes_inc', inc_id=inc.id) }}" class="btn btn-info btn-sm" data-bs-toggle="tooltip" title="Detalhes">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ url_for('editar_inc', inc_id=inc.id) }}" class="btn btn-warning btn-sm" data-bs-toggle="tooltip" title="Editar">
+                            <a href="{{ url_for('inc.editar_inc', inc_id=inc.id) }}" class="btn btn-warning btn-sm" data-bs-toggle="tooltip" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form action="{{ url_for('excluir_inc', inc_id=inc.id) }}" method="POST" style="display:inline;">
+                            <form action="{{ url_for('inc.excluir_inc', inc_id=inc.id) }}" method="POST" style="display:inline;">
                                 <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza?');" data-bs-toggle="tooltip" title="Excluir">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -109,13 +109,13 @@
 <nav aria-label="Páginas de resultados">
   <ul class="pagination justify-content-center">
     <li class="page-item {% if pagination.page == 1 %}disabled{% endif %}">
-      <a class="page-link" href="{{ url_for('visualizar_incs', page=pagination.prev_num, nf=request.args.get('nf', ''), item=request.args.get('item', ''), fornecedor=request.args.get('fornecedor', ''), status=request.args.get('status', '')) if pagination.has_prev else '#' }}" tabindex="-1">Anterior</a>
+      <a class="page-link" href="{{ url_for('inc.visualizar_incs', page=pagination.prev_num, nf=request.args.get('nf', ''), item=request.args.get('item', ''), fornecedor=request.args.get('fornecedor', ''), status=request.args.get('status', '')) if pagination.has_prev else '#' }}" tabindex="-1">Anterior</a>
     </li>
     
     {% for page_num in pagination.iter_pages() %}
       {% if page_num %}
         <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-          <a class="page-link" href="{{ url_for('visualizar_incs', page=page_num, nf=request.args.get('nf', ''), item=request.args.get('item', ''), fornecedor=request.args.get('fornecedor', ''), status=request.args.get('status', '')) }}">{{ page_num }}</a>
+          <a class="page-link" href="{{ url_for('inc.visualizar_incs', page=page_num, nf=request.args.get('nf', ''), item=request.args.get('item', ''), fornecedor=request.args.get('fornecedor', ''), status=request.args.get('status', '')) }}">{{ page_num }}</a>
         </li>
       {% else %}
         <li class="page-item disabled">
@@ -125,7 +125,7 @@
     {% endfor %}
     
     <li class="page-item {% if pagination.page == pagination.pages %}disabled{% endif %}">
-      <a class="page-link" href="{{ url_for('visualizar_incs', page=pagination.next_num, nf=request.args.get('nf', ''), item=request.args.get('item', ''), fornecedor=request.args.get('fornecedor', ''), status=request.args.get('status', '')) if pagination.has_next else '#' }}">Próximo</a>
+      <a class="page-link" href="{{ url_for('inc.visualizar_incs', page=pagination.next_num, nf=request.args.get('nf', ''), item=request.args.get('item', ''), fornecedor=request.args.get('fornecedor', ''), status=request.args.get('status', '')) if pagination.has_next else '#' }}">Próximo</a>
     </li>
   </ul>
 </nav>

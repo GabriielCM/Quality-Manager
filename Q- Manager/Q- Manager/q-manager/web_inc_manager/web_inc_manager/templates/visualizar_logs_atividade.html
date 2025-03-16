@@ -7,13 +7,13 @@
                 <i class="fas fa-history me-2"></i>Logs de Atividades
             </h5>
             <div>
-                <a href="{{ url_for('gerenciar_logins') }}" class="btn btn-secondary btn-sm">
+                <a href="{{ url_for('auth.gerenciar_logins') }}" class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-left me-1"></i> Voltar para Usuários
                 </a>
                 <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#filterModal">
                     <i class="fas fa-filter me-1"></i> Filtrar
                 </button>
-                <a href="{{ url_for('exportar_logs') }}" class="btn btn-success btn-sm">
+                <a href="{{ url_for('log.exportar_logs') }}" class="btn btn-success btn-sm">
                     <i class="fas fa-file-export me-1"></i> Exportar CSV
                 </a>
             </div>
@@ -22,11 +22,11 @@
             <!-- Filtros Rápidos -->
             <div class="mb-4">
                 <div class="btn-group mb-3">
-                    <a href="{{ url_for('visualizar_logs_atividade') }}" class="btn {% if not request.args.get('action') %}btn-primary{% else %}btn-outline-primary{% endif %}">Todos</a>
-                    <a href="{{ url_for('visualizar_logs_atividade', action='login') }}" class="btn {% if request.args.get('action') == 'login' %}btn-primary{% else %}btn-outline-primary{% endif %}">Logins</a>
-                    <a href="{{ url_for('visualizar_logs_atividade', action='create') }}" class="btn {% if request.args.get('action') == 'create' %}btn-primary{% else %}btn-outline-primary{% endif %}">Criações</a>
-                    <a href="{{ url_for('visualizar_logs_atividade', action='update') }}" class="btn {% if request.args.get('action') == 'update' %}btn-primary{% else %}btn-outline-primary{% endif %}">Edições</a>
-                    <a href="{{ url_for('visualizar_logs_atividade', action='delete') }}" class="btn {% if request.args.get('action') == 'delete' %}btn-primary{% else %}btn-outline-primary{% endif %}">Exclusões</a>
+                    <a href="{{ url_for('log.visualizar_logs_atividade') }}" class="btn {% if not request.args.get('action') %}btn-primary{% else %}btn-outline-primary{% endif %}">Todos</a>
+                    <a href="{{ url_for('log.visualizar_logs_atividade', action='login') }}" class="btn {% if request.args.get('action') == 'login' %}btn-primary{% else %}btn-outline-primary{% endif %}">Logins</a>
+                    <a href="{{ url_for('log.visualizar_logs_atividade', action='create') }}" class="btn {% if request.args.get('action') == 'create' %}btn-primary{% else %}btn-outline-primary{% endif %}">Criações</a>
+                    <a href="{{ url_for('log.visualizar_logs_atividade', action='update') }}" class="btn {% if request.args.get('action') == 'update' %}btn-primary{% else %}btn-outline-primary{% endif %}">Edições</a>
+                    <a href="{{ url_for('log.visualizar_logs_atividade', action='delete') }}" class="btn {% if request.args.get('action') == 'delete' %}btn-primary{% else %}btn-outline-primary{% endif %}">Exclusões</a>
                 </div>
                 
                 {% if request.args %}
@@ -42,7 +42,7 @@
                                 {% endfor %}
                             </ul>
                         </div>
-                        <a href="{{ url_for('visualizar_logs_atividade') }}" class="btn btn-sm btn-outline-secondary">
+                        <a href="{{ url_for('log.visualizar_logs_atividade') }}" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-times me-1"></i> Limpar Filtros
                         </a>
                     </div>
@@ -73,7 +73,7 @@
                                     <div class="avatar-circle bg-primary text-white me-2" style="width: 30px; height: 30px; font-size: 12px;">
                                         {{ log.user.username[0]|upper }}
                                     </div>
-                                    <a href="{{ url_for('visualizar_logs_atividade', user_id=log.user_id) }}">{{ log.user.username }}</a>
+                                    <a href="{{ url_for('log.visualizar_logs_atividade', user_id=log.user_id) }}">{{ log.user.username }}</a>
                                 </div>
                             </td>
                             <td>
@@ -121,10 +121,10 @@
                             <td>{{ log.ip_address }}</td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="{{ url_for('visualizar_logs_atividade', user_id=log.user_id) }}" class="btn btn-sm btn-outline-primary" title="Filtrar por este usuário">
+                                    <a href="{{ url_for('log.visualizar_logs_atividade', user_id=log.user_id) }}" class="btn btn-sm btn-outline-primary" title="Filtrar por este usuário">
                                         <i class="fas fa-user"></i>
                                     </a>
-                                    <a href="{{ url_for('visualizar_logs_atividade', action=log.action) }}" class="btn btn-sm btn-outline-primary" title="Filtrar por esta ação">
+                                    <a href="{{ url_for('log.visualizar_logs_atividade', action=log.action) }}" class="btn btn-sm btn-outline-primary" title="Filtrar por esta ação">
                                         <i class="fas fa-filter"></i>
                                     </a>
                                 </div>
@@ -140,13 +140,13 @@
             <nav aria-label="Navegação de logs">
                 <ul class="pagination justify-content-center mt-4">
                     <li class="page-item {% if logs.page == 1 %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('visualizar_logs_atividade', page=logs.prev_num, **request.args) if logs.has_prev else '#' }}">Anterior</a>
+                        <a class="page-link" href="{{ url_for('log.visualizar_logs_atividade', page=logs.prev_num, **request.args) if logs.has_prev else '#' }}">Anterior</a>
                     </li>
                     
                     {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                         {% if page_num %}
                             <li class="page-item {% if logs.page == page_num %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('visualizar_logs_atividade', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                <a class="page-link" href="{{ url_for('log.visualizar_logs_atividade', page=page_num, **request.args) }}">{{ page_num }}</a>
                             </li>
                         {% else %}
                             <li class="page-item disabled">
@@ -156,7 +156,7 @@
                     {% endfor %}
                     
                     <li class="page-item {% if logs.page == logs.pages %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('visualizar_logs_atividade', page=logs.next_num, **request.args) if logs.has_next else '#' }}">Próximo</a>
+                        <a class="page-link" href="{{ url_for('log.visualizar_logs_atividade', page=logs.next_num, **request.args) if logs.has_next else '#' }}">Próximo</a>
                     </li>
                 </ul>
             </nav>
@@ -196,7 +196,7 @@
 <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="{{ url_for('visualizar_logs_atividade') }}" method="GET">
+            <form action="{{ url_for('log.visualizar_logs_atividade') }}" method="GET">
                 <div class="modal-header">
                     <h5 class="modal-title" id="filterModalLabel">Filtrar Logs</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -249,7 +249,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <a href="{{ url_for('visualizar_logs_atividade') }}" class="btn btn-link">Limpar Filtros</a>
+                    <a href="{{ url_for('log.visualizar_logs_atividade') }}" class="btn btn-link">Limpar Filtros</a>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
                 </div>

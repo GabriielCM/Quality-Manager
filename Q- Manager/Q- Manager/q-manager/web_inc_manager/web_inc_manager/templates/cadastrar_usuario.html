@@ -7,7 +7,7 @@
                 <i class="fas fa-user-plus me-2"></i>Cadastrar Novo Usuário
             </h5>
             <div>
-                <a href="{{ url_for('gerenciar_logins') }}" class="btn btn-sm btn-secondary">
+                <a href="{{ url_for('auth.gerenciar_logins') }}" class="btn btn-sm btn-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Voltar para Lista de Usuários
                 </a>
             </div>
@@ -163,7 +163,7 @@
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{{ url_for('gerenciar_logins') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('auth.gerenciar_logins') }}" class="btn btn-secondary">
                                 <i class="fas fa-times me-1"></i> Cancelar
                             </a>
                             <button type="submit" class="btn btn-success" id="submitBtn">

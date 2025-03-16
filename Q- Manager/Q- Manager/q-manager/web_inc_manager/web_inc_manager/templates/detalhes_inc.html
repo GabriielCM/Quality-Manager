@@ -9,13 +9,13 @@
                         <i class="fas fa-file-alt me-2"></i>Detalhes da INC #{{ inc.oc }}
                     </h4>
                     <div>
-                        <a href="{{ url_for('export_pdf', inc_id=inc.id) }}" class="btn btn-sm btn-primary">
+                        <a href="{{ url_for('inc.export_pdf', inc_id=inc.id) }}" class="btn btn-sm btn-primary">
                             <i class="fas fa-file-pdf me-1"></i> Exportar PDF
                         </a>
-                        <a href="{{ url_for('print_inc_label', inc_id=inc.id) }}" class="btn btn-sm btn-info">
+                        <a href="{{ url_for('inc.print_inc_label', inc_id=inc.id) }}" class="btn btn-sm btn-info">
                             <i class="fas fa-print me-1"></i> Imprimir Etiqueta
                         </a>
-                        <a href="{{ url_for('visualizar_incs') }}" class="btn btn-sm btn-secondary">
+                        <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-sm btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i> Voltar
                         </a>
                     </div>
@@ -134,16 +134,16 @@
                     
                     <div class="row mt-4">
                         <div class="col-12 d-flex justify-content-center">
-                            <a href="{{ url_for('export_pdf', inc_id=inc.id) }}" class="btn btn-primary me-2">
+                            <a href="{{ url_for('inc.export_pdf', inc_id=inc.id) }}" class="btn btn-primary me-2">
                                 <i class="fas fa-file-pdf me-1"></i> Exportar PDF
                             </a>
-                            <a href="{{ url_for('print_inc_label', inc_id=inc.id) }}" class="btn btn-info me-2">
+                            <a href="{{ url_for('inc.print_inc_label', inc_id=inc.id) }}" class="btn btn-info me-2">
                                 <i class="fas fa-print me-1"></i> Imprimir Etiqueta
                             </a>
-                            <a href="{{ url_for('editar_inc', inc_id=inc.id) }}" class="btn btn-warning me-2">
+                            <a href="{{ url_for('inc.editar_inc', inc_id=inc.id) }}" class="btn btn-warning me-2">
                                 <i class="fas fa-edit me-1"></i> Editar INC
                             </a>
-                            <a href="{{ url_for('visualizar_incs') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left me-1"></i> Voltar
                             </a>
                         </div>

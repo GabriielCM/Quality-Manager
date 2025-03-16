@@ -7,7 +7,7 @@
                 <i class="fas fa-file-alt me-2"></i>Cadastrar Nova INC
             </h5>
             <div>
-                <a href="{{ url_for('visualizar_incs') }}" class="btn btn-sm btn-secondary">
+                <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-sm btn-secondary">
                     <i class="fas fa-list me-1"></i> Listar INCs
                 </a>
             </div>
@@ -28,9 +28,8 @@
                                 <div class="mb-3">
                                     <label for="representante" class="form-label">Representante</label>
                                     <select class="form-select" id="representante" name="representante" required>
-                                        <option value="">Selecione um representante</option>
                                         {% for rep in representantes %}
-                                        <option value="{{ rep.id }}">{{ rep.username }}</option>
+                                        <option value="{{ rep }}" {% if rep == inc.representante %}selected{% endif %}>{{ rep }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>

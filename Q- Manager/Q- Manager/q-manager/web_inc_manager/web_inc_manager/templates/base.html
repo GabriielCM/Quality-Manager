@@ -41,17 +41,17 @@
                         <i class="fas fa-file-alt me-2"></i>INC
                     </a>
                     <ul class="collapse list-unstyled" id="incSubmenu">
-                        {% if current_user.is_admin or current_user.has_permission('cadastro_inc') %}
+                        {% if current_user.is_admin or current_user.has_permission('inc.cadastro_inc') %}
                         <li>
-                            <a href="{{ url_for('cadastro_inc') }}">Cadastrar INC</a>
+                            <a href="{{ url_for('inc.cadastro_inc') }}">Cadastrar INC</a>
                         </li>
                         {% endif %}
-                        {% if current_user.is_admin or current_user.has_permission('visualizar_incs') %}
+                        {% if current_user.is_admin or current_user.has_permission('inc.visualizar_incs') %}
                         <li>
-                            <a href="{{ url_for('visualizar_incs') }}">Visualizar INCs</a>
+                            <a href="{{ url_for('inc.visualizar_incs') }}">Visualizar INCs</a>
                         </li>
                         <li>
-                            <a href="{{ url_for('expiracao_inc') }}">INCs Vencidas</a>
+                            <a href="{{ url_for('inc.expiracao_inc') }}">INCs Vencidas</a>
                         </li>
                         {% endif %}
                     </ul>
@@ -63,24 +63,24 @@
                     </a>
                     <ul class="collapse list-unstyled" id="inspecaoSubmenu">
                         <li>
-                            <a href="{{ url_for('rotina_inspecao') }}">Rotina de Inspeção</a>
+                            <a href="{{ url_for('inspecao.rotina_inspecao') }}">Rotina de Inspeção</a>
                         </li>
                         <li>
-                            <a href="{{ url_for('listar_rotinas_inspecao') }}">Listar Rotinas</a>
+                            <a href="{{ url_for('inspecao.listar_rotinas_inspecao') }}">Listar Rotinas</a>
                         </li>
                     </ul>
                 </li>
                 {% endif %}
                 {% if current_user.is_admin or current_user.has_permission('prateleira') %}
                 <li>
-                    <a href="{{ url_for('listar_prateleira_nao_conforme') }}">
+                    <a href="{{ url_for('prateleira.listar_prateleira_nao_conforme') }}">
                         <i class="fas fa-exclamation-triangle me-2"></i>Prateleira Não Conforme
                     </a>
                 </li>
                 {% endif %}
                 {% if current_user.is_admin or current_user.has_permission('fornecedores') %}
                 <li>
-                    <a href="{{ url_for('monitorar_fornecedores') }}">
+                    <a href="{{ url_for('inc.monitorar_fornecedores') }}">
                         <i class="fas fa-chart-bar me-2"></i>Monitorar Fornecedores
                     </a>
                 </li>
@@ -92,16 +92,16 @@
                     </a>
                     <ul class="collapse list-unstyled" id="faturamentoSubmenu">
                         <li>
-                            <a href="{{ url_for('nova_solicitacao_faturamento') }}">Nova Solicitação</a>
+                            <a href="{{ url_for('faturamento.nova_solicitacao_faturamento') }}">Nova Solicitação</a>
                         </li>
                         <li>
-                            <a href="{{ url_for('listar_solicitacoes_faturamento') }}">Listar Solicitações</a>
+                            <a href="{{ url_for('faturamento.listar_solicitacoes_faturamento') }}">Listar Solicitações</a>
                         </li>
                     </ul>
                 </li>
                 {% endif %}
                 <li>
-                    <a href="{{ url_for('gerenciar_fornecedores') }}">
+                    <a href="{{ url_for('fornecedor.gerenciar_fornecedores') }}">
                         <i class="fas fa-building me-2"></i>Gerenciar Fornecedores
                     </a>
                 </li>
@@ -112,10 +112,10 @@
                     </a>
                     <ul class="collapse list-unstyled" id="adminSubmenu">
                         <li>
-                            <a href="{{ url_for('gerenciar_logins') }}">Gerenciar Logins</a>
+                            <a href="{{ url_for('auth.gerenciar_logins') }}">Gerenciar Logins</a>
                         </li>
                         <li>
-                            <a href="{{ url_for('editar_layout') }}">Editar Layout</a>
+                            <a href="{{ url_for('auth.editar_layout') }}">Editar Layout</a>
                         </li>
                     </ul>
                 </li>
@@ -151,9 +151,9 @@
                                 <i class="fas fa-user-circle me-1"></i> {{ current_user.username }}
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('perfil') }}"><i class="fas fa-user-cog me-2"></i>Meu Perfil</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.perfil') }}"><i class="fas fa-user-cog me-2"></i>Meu Perfil</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
                             </ul>
                         </div>
                     </div>
@@ -248,7 +248,7 @@
                         <button id="toggleNightMode" class="btn btn-sm btn-outline-light me-2">
                             <i class="fas fa-moon"></i> Modo Noturno
                         </button>
-                        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-danger">
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-danger">
                             <i class="fas fa-sign-out-alt"></i> Sair
                         </a>
                     </div>

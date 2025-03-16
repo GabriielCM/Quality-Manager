@@ -7,10 +7,10 @@
                 <i class="fas fa-clipboard-check me-2"></i>Registros de Inspeção
             </h5>
             <div>
-                <a href="{{ url_for('listar_rotinas_inspecao') }}" class="btn btn-sm btn-info">
+                <a href="{{ url_for('inspecao.listar_rotinas_inspecao') }}" class="btn btn-sm btn-info">
                     <i class="fas fa-history me-1"></i> Histórico de Inspeções
                 </a>
-                <a href="{{ url_for('listar_planos_inspecao') }}" class="btn btn-sm btn-primary">
+                <a href="{{ url_for('inspecao.listar_planos_inspecao') }}" class="btn btn-sm btn-primary">
                     <i class="fas fa-clipboard-list me-1"></i> Planos de Inspeção
                 </a>
             </div>
@@ -34,7 +34,7 @@
             </div>
             <div id="tokenForm" style="display:none;" class="mb-3 card bg-light">
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('set_crm_token') }}" class="row g-3">
+                    <form method="POST" action="{{ url_for('inspecao.set_crm_token') }}" class="row g-3">
                         <div class="col-md-9">
                             <input type="text" class="form-control" name="crm_link" placeholder="Cole o novo link do CRM" required>
                         </div>
@@ -120,7 +120,7 @@
                                             </button>
                                             
                                             <!-- Form para inspecionar -->
-                                            <form method="POST" action="{{ url_for('visualizar_registros_inspecao') }}" 
+                                            <form method="POST" action="{{ url_for('inspecao.visualizar_registros_inspecao') }}" 
                                                   style="display:inline;" 
                                                   onsubmit="return saveAndSubmit(this, 'inspecionar', {{ ar }}, {{ loop.index0 }})">
                                                 <input type="hidden" name="item_index" value="{{ loop.index0 }}">
@@ -133,7 +133,7 @@
                                             </form>
                                             
                                             <!-- Form para adiar -->
-                                            <form method="POST" action="{{ url_for('visualizar_registros_inspecao') }}" 
+                                            <form method="POST" action="{{ url_for('inspecao.visualizar_registros_inspecao') }}" 
                                                   style="display:inline;" 
                                                   onsubmit="return saveAndSubmit(this, 'adiar', {{ ar }}, {{ loop.index0 }})">
                                                 <input type="hidden" name="item_index" value="{{ loop.index0 }}">
@@ -156,7 +156,7 @@
             </div>
             {% endfor %}
 
-            <form method="POST" action="{{ url_for('salvar_rotina_inspecao') }}">
+            <form method="POST" action="{{ url_for('inspecao.salvar_rotina_inspecao') }}">
                 <div class="card mb-4 shadow-sm">
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
@@ -343,6 +343,17 @@ function restoreScrollPosition() {
     }
 }
 
+// Função para abrir o link do CRM
+function openCRMLink(item, token) {
+    const baseUrl = document.getElementById('crm-base-url').getAttribute('data-url');
+    if (baseUrl && token) {
+        const url = `${baseUrl}&token=${token}&item=${encodeURIComponent(item)}`;
+        window.open(url, '_blank');
+    } else {
+        alert('Erro: URL base do CRM ou token não encontrados. Verifique a configuração.');
+    }
+}
+
 // Função para atualizar a barra de progresso
 function updateProgressBar() {
     const statusCells = document.querySelectorAll('.status-cell');
@@ -388,29 +399,46 @@ function updateProgressBar() {
     }
 }
 
-// Função para verificar histórico de INCs para um item - com melhor tratamento de erros
-async function checkIncHistory(item) {
+// Função melhorada para verificar histórico de INCs com mais robustez e retentativas
+async function checkIncHistory(item, retryCount = 0) {
     try {
-        // Codificar o item para URL
-        const encodedItem = encodeURIComponent(item);
-        console.log('Verificando histórico para item:', item);
+        // Garantir que o item esteja devidamente formatado
+        const trimmedItem = item.trim();
         
-        // Fazer a requisição para a API
-        const response = await fetch(`/api/historico_incs/${encodedItem}`);
+        // Verificação extra para itens vazios
+        if (!trimmedItem) {
+            console.warn('Tentativa de verificar item vazio');
+            return { success: false, item: item, incs: [], total: 0 };
+        }
+        
+        // Codificar o item para URL com tratamento especial para caracteres problemáticos
+        const encodedItem = encodeURIComponent(trimmedItem);
+        console.log(`[DEBUG] Verificando histórico para item: ${trimmedItem} (encoded: ${encodedItem})`);
+        
+        // Fazer a requisição para a API com timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
+        
+        const response = await fetch(`/inspecao/api/historico_incs/${encodedItem}`, { 
+            signal: controller.signal,
+            headers: { 'Cache-Control': 'no-cache' }
+        });
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
             throw new Error(`API request failed with status: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log(`[DEBUG] Resposta da API para ${trimmedItem}:`, data);
         
         // Verificar se temos os dados esperados
         if (!data.hasOwnProperty('total')) {
-            console.error('API response missing total property:', data);
+            console.error('[ERROR] API response missing total property:', data);
             throw new Error('API response format is invalid');
         }
         
-        console.log(`Item ${item}: ${data.total} INCs encontradas`);
+        console.log(`[INFO] Item ${trimmedItem}: ${data.total} INCs encontradas`);
         
         return {
             success: true,
@@ -419,12 +447,20 @@ async function checkIncHistory(item) {
             total: data.total
         };
     } catch (error) {
-        console.error(`Erro ao verificar histórico para o item ${item}:`, error);
+        // Se for um erro de timeout ou rede e ainda não atingimos o máximo de retentativas
+        if ((error.name === 'AbortError' || error.name === 'TypeError') && retryCount < 2) {
+            console.warn(`[WARN] Erro de rede/timeout para item ${item}. Tentando novamente (${retryCount + 1}/3)...`);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Espera 1 segundo antes de tentar novamente
+            return checkIncHistory(item, retryCount + 1);
+        }
+        
+        console.error(`[ERROR] Erro ao verificar histórico para o item ${item}:`, error);
         return {
             success: false,
             item: item,
             incs: [],
-            total: 0
+            total: 0,
+            error: error.message
         };
     }
 }
@@ -436,7 +472,7 @@ async function checkInspectionPlan(item) {
         const encodedItem = encodeURIComponent(item);
         
         // Fazer a requisição para a API
-        const response = await fetch(`/api/plano_inspecao/${encodedItem}`);
+        const response = await fetch(`/inspecao/api/plano_inspecao/${encodedItem}`);
         const data = await response.json();
         
         return data;
@@ -500,7 +536,7 @@ function showIncHistoryModal(item) {
                         </span>
                     </td>
                     <td>
-                        <a href="/detalhes_inc/${inc.id}" class="btn btn-info btn-sm" target="_blank">
+                        <a href="/inc/detalhes_inc/${inc.id}" class="btn btn-info btn-sm" target="_blank">
                             <i class="fas fa-eye"></i> Detalhes
                         </a>
                     </td>
@@ -535,7 +571,7 @@ function showInspectionPlanModal(item) {
     
     // Configurar link para criar plano
     const criarPlanoLink = document.getElementById('criarPlanoLink');
-    criarPlanoLink.href = `/novo_plano_inspecao?item=${encodeURIComponent(item)}`;
+    criarPlanoLink.href = `/inspecao/novo_plano?item=${encodeURIComponent(item)}`;
     
     // Buscar o plano de inspeção
     checkInspectionPlan(item).then(data => {
@@ -550,7 +586,7 @@ function showInspectionPlanModal(item) {
             
             // Configurar link para editar plano
             const editarPlanoLink = document.getElementById('editarPlanoLink');
-            editarPlanoLink.href = `/editar_plano_inspecao/${data.plan.id}`;
+            editarPlanoLink.href = `/inspecao/editar_plano/${data.plan.id}`;
             editarPlanoLink.style.display = 'block';
             
             // Mostrar o conteúdo
@@ -602,7 +638,7 @@ async function updatePlanCell(itemElement, planCell) {
         // Mostrar botão para criar plano
         planCell.innerHTML = `
             <div>
-                <a href="/novo_plano_inspecao?item=${encodeURIComponent(item)}" class="btn btn-sm btn-outline-secondary">
+                <a href="/inspecao/novo_plano?item=${encodeURIComponent(item)}" class="btn btn-sm btn-outline-secondary">
                     <i class="fas fa-plus-circle me-1"></i> Criar Plano
                 </a>
             </div>
@@ -610,113 +646,214 @@ async function updatePlanCell(itemElement, planCell) {
     }
 }
 
-// Função para verificar todos os itens na página - com melhor tratamento de erros
+// Função auxiliar para mostrar mensagens de toast
+function showToast(message, type = 'info') {
+    // Verificar se o container de toast existe
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '1100';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Criar um ID único para o toast
+    const toastId = 'toast-' + Date.now();
+    
+    // Definir a classe de cor baseada no tipo
+    const bgClass = type === 'error' ? 'bg-danger' : 
+                    type === 'success' ? 'bg-success' : 
+                    type === 'warning' ? 'bg-warning' : 'bg-info';
+    
+    // Criar o elemento toast
+    const toastHTML = `
+        <div id="${toastId}" class="toast align-items-center ${bgClass} text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    
+    // Adicionar o toast ao container
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Inicializar e mostrar o toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+    toast.show();
+    
+    // Remover o toast do DOM após fechado
+    toastElement.addEventListener('hidden.bs.toast', function () {
+        toastElement.remove();
+    });
+}
+
+// Função melhorada para verificar todos os itens na página
 async function checkAllItems() {
     try {
+        // Adicionar um indicador visual de carregamento
+        const progressBar = document.getElementById('progress-bar');
+        const originalProgressBar = progressBar ? progressBar.innerHTML : '';
+        
+        if (progressBar) {
+            progressBar.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i> Verificando histórico de INCs...`;
+        }
+        
+        // Buscar elementos com mais robustez
         const itemElements = document.querySelectorAll('.item-code');
-        console.log(`Encontrados ${itemElements.length} elementos de item na página`);
+        console.log(`[INFO] Encontrados ${itemElements.length} elementos de item na página`);
         
         if (itemElements.length === 0) {
-            console.warn('Nenhum elemento de item encontrado na página');
+            console.warn('[WARN] Nenhum elemento de item encontrado na página');
+            
+            // Verificar se existe algum item no DOM, mesmo sem a classe correta
+            const possibleItems = document.querySelectorAll('tr strong');
+            if (possibleItems.length > 0) {
+                console.warn('[WARN] Encontrados elementos que podem ser itens mas sem a classe correta:', possibleItems);
+            }
+            
+            if (progressBar) progressBar.innerHTML = originalProgressBar;
             return;
         }
         
-        // Primeiro, vamos processar as notificações de INC para todos os itens
-        for (const element of itemElements) {
-            try {
-                const item = element.getAttribute('data-item');
-                if (!item) {
-                    console.warn('Item sem código encontrado', element);
-                    continue;
-                }
-                
-                const row = element.closest('tr');
-                if (!row) {
-                    console.warn('Não foi possível encontrar a linha para o item', item);
-                    continue;
-                }
-                
-                const indicatorElement = element.parentElement.querySelector('.history-indicator');
-                if (!indicatorElement) {
-                    console.warn('Elemento indicador não encontrado para o item', item);
-                    continue;
-                }
-                
-                // Verificar o histórico de INCs
-                const history = await checkIncHistory(item);
-                
-                // Se temos histórico de INCs, exibir a notificação
-                if (history.success && history.total > 0) {
-                    console.log(`Adicionando badge para item ${item} com ${history.total} INCs`);
-                    
-                    // Adicionar ícone de alerta com estilo mais destacado
-                    indicatorElement.innerHTML = `
-                        <span class="badge bg-danger cursor-pointer history-badge" 
-                              data-item="${item}" 
-                              data-bs-toggle="tooltip" 
-                              title="Este item possui ${history.total} INCs em seu histórico. Clique para ver detalhes."
-                              style="font-size: 0.85rem; padding: 0.35em 0.65em; margin-left: 5px;">
-                            <i class="fas fa-exclamation-triangle"></i> ${history.total}
-                        </span>
-                    `;
-                    
-                    // Inicializar tooltip e garantir que seja exibido
-                    try {
-                        const tooltipElement = indicatorElement.querySelector('.history-badge');
-                        const tooltip = new bootstrap.Tooltip(tooltipElement);
-                        
-                        // Adicionar evento de clique para exibir o modal
-                        tooltipElement.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            showIncHistoryModal(item);
-                        });
-                        
-                        // Destacar a linha com uma borda vermelha
-                        row.style.borderLeft = '4px solid #dc3545';
-                        
-                    } catch (tooltipError) {
-                        console.error('Erro ao inicializar tooltip:', tooltipError);
-                    }
-                } else {
-                    console.log(`Item ${item} não tem INCs ou ocorreu um erro na verificação`);
-                }
-                
-                // Pequena pausa para não sobrecarregar o servidor
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-            } catch (itemError) {
-                console.error('Erro ao processar item:', itemError);
+        // Processamento em lotes para não sobrecarregar o navegador/servidor
+        const batchSize = 5;
+        for (let i = 0; i < itemElements.length; i += batchSize) {
+            const batch = Array.from(itemElements).slice(i, i + batchSize);
+            
+            // Atualizar progresso
+            if (progressBar) {
+                const percent = Math.min(100, Math.round((i / itemElements.length) * 100));
+                progressBar.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i> Verificando histórico de INCs... ${percent}%`;
             }
+            
+            // Processar lote em paralelo
+            await Promise.all(batch.map(async (element) => {
+                try {
+                    // Obter o código do item verificando primeiro o atributo data-item
+                    let item = element.getAttribute('data-item');
+                    
+                    // Se não encontrar no data-item, usa o texto interno
+                    if (!item) {
+                        item = element.textContent.trim();
+                        console.warn(`[WARN] Item sem atributo data-item, usando texto: ${item}`);
+                    }
+                    
+                    if (!item) {
+                        console.warn('[WARN] Item sem código encontrado', element);
+                        return;
+                    }
+                    
+                    // Encontrar linha e indicador com verificação de existência
+                    const row = element.closest('tr');
+                    if (!row) {
+                        console.warn(`[WARN] Não foi possível encontrar a linha para o item ${item}`);
+                        return;
+                    }
+                    
+                    // Buscar ou criar o elemento indicador
+                    let indicatorElement = element.parentElement.querySelector('.history-indicator');
+                    if (!indicatorElement) {
+                        console.warn(`[WARN] Indicador não encontrado para ${item}, criando...`);
+                        indicatorElement = document.createElement('span');
+                        indicatorElement.className = 'history-indicator ms-2';
+                        element.parentElement.appendChild(indicatorElement);
+                    }
+                    
+                    // Adicionar indicador de carregamento
+                    indicatorElement.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary" role="status"></span>';
+                    
+                    // Verificar o histórico de INCs com tentativas repetidas em caso de falha
+                    const history = await checkIncHistory(item);
+                    
+                    // Limpar indicador de carregamento
+                    indicatorElement.innerHTML = '';
+                    
+                    // Se temos histórico de INCs, exibir a notificação
+                    if (history.success && history.total > 0) {
+                        console.log(`[SUCCESS] Adicionando badge para item ${item} com ${history.total} INCs`);
+                        
+                        // Adicionar ícone de alerta com estilo mais destacado e animação para chamar atenção
+                        indicatorElement.innerHTML = `
+                            <span class="badge bg-danger cursor-pointer history-badge" 
+                                  data-item="${item}" 
+                                  data-bs-toggle="tooltip" 
+                                  title="Este item possui ${history.total} INCs em seu histórico. Clique para ver detalhes."
+                                  style="font-size: 0.85rem; padding: 0.35em 0.65em; margin-left: 5px; animation: pulse 2s infinite;">
+                                <i class="fas fa-exclamation-triangle"></i> ${history.total}
+                            </span>
+                        `;
+                        
+                        // Inicializar tooltip e garantir que seja exibido
+                        try {
+                            const tooltipElement = indicatorElement.querySelector('.history-badge');
+                            const tooltip = new bootstrap.Tooltip(tooltipElement);
+                            
+                            // Adicionar evento de clique para exibir o modal
+                            tooltipElement.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                showIncHistoryModal(item);
+                            });
+                            
+                            // Destacar a linha com uma borda vermelha
+                            row.style.borderLeft = '4px solid #dc3545';
+                            
+                        } catch (tooltipError) {
+                            console.error(`[ERROR] Erro ao inicializar tooltip para ${item}:`, tooltipError);
+                        }
+                    } else if (!history.success) {
+                        console.warn(`[WARN] Falha ao verificar histórico para ${item}: ${history.error || 'Erro desconhecido'}`);
+                        
+                        // Se houver erro, mostrar um indicador sutil de erro
+                        indicatorElement.innerHTML = `
+                            <span class="badge bg-secondary" title="Não foi possível verificar o histórico">
+                                <i class="fas fa-question-circle"></i>
+                            </span>
+                        `;
+                    }
+                    
+                    // Atualizar a célula de plano de inspeção
+                    const planCell = row.querySelector('.plan-cell');
+                    if (planCell) {
+                        await updatePlanCell(element, planCell);
+                    }
+                    
+                } catch (itemError) {
+                    console.error('[ERROR] Erro ao processar item:', itemError);
+                }
+            }));
+            
+            // Pequena pausa entre lotes para não bloquear a UI
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
         
-        // Depois, vamos processar os planos de inspeção
-        for (const element of itemElements) {
-            try {
-                const item = element.getAttribute('data-item');
-                if (!item) continue;
-                
-                const planCell = element.closest('tr').querySelector('.plan-cell');
-                if (!planCell) continue;
-                
-                // Atualizar a célula de plano
-                await updatePlanCell(element, planCell);
-                
-                // Pequena pausa para não sobrecarregar o servidor
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-            } catch (planError) {
-                console.error('Erro ao processar plano:', planError);
-            }
+        // Restaurar o conteúdo original da barra de progresso
+        if (progressBar) {
+            progressBar.innerHTML = originalProgressBar;
         }
+        
+        console.log('[INFO] Verificação de histórico concluída com sucesso');
+        
+        // Mostrar uma notificação para o usuário
+        showToast('Verificação de histórico de INCs concluída!', 'success');
         
     } catch (globalError) {
-        console.error('Erro global ao verificar itens:', globalError);
+        console.error('[ERROR] Erro global ao verificar itens:', globalError);
+        
+        // Informar o usuário sobre o erro
+        showToast('Ocorreu um erro ao verificar o histórico de INCs. Recarregue a página para tentar novamente.', 'error');
     }
 }
 
-// Inicializa quando o documento estiver pronto
+// Documento carregado - inicializar verificações
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[INFO] Página carregada, inicializando verificação de INCs...');
+    
     // Preenche todos os inputs de posição de rolagem com o valor atual
     document.querySelectorAll('.scroll-position-input').forEach(input => {
         input.value = window.scrollY || window.pageYOffset;
@@ -758,11 +895,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar histórico de INCs e planos para todos os itens
     // Adicionando um pequeno atraso para garantir que a página esteja completamente carregada
     setTimeout(() => {
-        console.log('Iniciando verificação de INCs e planos...');
+        console.log('[INFO] Iniciando verificação de INCs e planos...');
         checkAllItems();
-    }, 500);
+    }, 1000); // Aumentado para 1000ms para dar mais tempo à página para inicializar completamente
     
-    // Adicionar CSS para cursor pointer
+    // Adicionar CSS para cursor pointer e animações
     const style = document.createElement('style');
     style.textContent = `
         .cursor-pointer {
@@ -770,10 +907,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         .history-badge:hover, .plan-badge:hover {
             opacity: 0.8;
+            transform: scale(1.1);
+            transition: all 0.2s ease;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
-        }
-        .history-badge {
-            animation: pulse 2s infinite;
         }
         @keyframes pulse {
             0% {
