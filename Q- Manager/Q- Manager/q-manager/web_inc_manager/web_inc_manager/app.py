@@ -1,5 +1,7 @@
 import os
 import logging
+import matplotlib
+matplotlib.use('Agg')  # Use the 'Agg' backend which doesn't require GUI
 from flask import Flask, redirect, url_for, render_template, flash, session
 from flask_session import Session
 from flask_login import LoginManager, current_user, login_required

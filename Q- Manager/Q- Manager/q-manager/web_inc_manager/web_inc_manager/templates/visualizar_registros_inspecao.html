@@ -347,7 +347,8 @@ function restoreScrollPosition() {
 function openCRMLink(item, token) {
     const baseUrl = document.getElementById('crm-base-url').getAttribute('data-url');
     if (baseUrl && token) {
-        const url = `${baseUrl}&token=${token}&item=${encodeURIComponent(item)}`;
+        // Formato correto com cod_item e filter_cod
+        const url = `${baseUrl}&token=${token}&cod_item=${encodeURIComponent(item)}&filter_cod=${encodeURIComponent(item.trim().toLowerCase())}`;
         window.open(url, '_blank');
     } else {
         alert('Erro: URL base do CRM ou token não encontrados. Verifique a configuração.');

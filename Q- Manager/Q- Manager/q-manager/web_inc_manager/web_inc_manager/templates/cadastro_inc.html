@@ -29,7 +29,7 @@
                                     <label for="representante" class="form-label">Representante</label>
                                     <select class="form-select" id="representante" name="representante" required>
                                         {% for rep in representantes %}
-                                        <option value="{{ rep }}" {% if rep == inc.representante %}selected{% endif %}>{{ rep }}</option>
+                                        <option value="{{ rep.id }}">{{ rep.username }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>

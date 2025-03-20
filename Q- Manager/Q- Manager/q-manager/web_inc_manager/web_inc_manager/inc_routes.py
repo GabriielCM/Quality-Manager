@@ -14,6 +14,68 @@ import matplotlib.pyplot as plt
 
 inc_bp = Blueprint('inc', __name__, url_prefix='/inc')
 
+
+@inc_bp.route('/api/update_inc_status/<int:inc_id>', methods=['POST'])
+@login_required
+def api_update_inc_status(inc_id):
+    """API for updating INC status from the frontend"""
+    try:
+        # Check permissions
+        if not current_user.is_admin and not current_user.has_permission('visualizar_incs'):
+            return jsonify({
+                'success': False,
+                'error': 'Acesso negado. Você não tem permissão para atualizar o status.'
+            }), 403
+        
+        # Get data from request
+        data = request.json
+        if not data or 'status' not in data:
+            return jsonify({'success': False, 'error': 'Status não fornecido'}), 400
+        
+        new_status = data.get('status')
+        valid_statuses = ['Em andamento', 'Concluída', 'Vencida']
+        
+        if new_status not in valid_statuses:
+            return jsonify({'success': False, 'error': 'Status inválido'}), 400
+        
+        # Get the INC
+        inc = INC.query.get_or_404(inc_id)
+        
+        # Record original status for the log
+        old_status = inc.status
+        
+        # Update INC status
+        inc.status = new_status
+        db.session.commit()
+        
+        # Record the status update
+        log_user_activity(
+            user_id=current_user.id,
+            action="update",
+            entity_type="inc_status",
+            entity_id=inc.id,
+            details={
+                "changes": {
+                    "status": {
+                        "old": old_status,
+                        "new": new_status
+                    }
+                },
+                "method": "api"
+            }
+        )
+        
+        return jsonify({
+            'success': True, 
+            'inc_id': inc.id,
+            'inc_oc': inc.oc,
+            'new_status': new_status
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @inc_bp.route('/cadastro_inc', methods=['GET', 'POST'])
 @login_required
 def cadastro_inc():

@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
         incsTbody.innerHTML = '';
         
         // Buscar INCs do fornecedor via API
-        fetch(`/api/incs_por_fornecedor/${encodeURIComponent(fornecedor)}`)
+        fetch(`/faturamento/api/incs_por_fornecedor/${encodeURIComponent(fornecedor)}`)
             .then(response => response.json())
             .then(data => {
                 loadingIncs.style.display = 'none';
