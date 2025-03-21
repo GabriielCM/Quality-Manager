@@ -15,6 +15,13 @@
         <div class="card-body">
             <!-- Main form -->
             <form method="POST" action="{{ url_for('inc.editar_inc', inc_id=inc.id) }}" enctype="multipart/form-data" id="mainForm">
+                <!-- Input para debug -->
+                <input type="hidden" name="debug" value="1">
+                <!-- Campo oculto para armazenar dados da concessão em formato JSON -->
+                <input type="hidden" name="concessao_data" id="concessao_data" value="">
+                <!-- Campo escondido para indicar que é uma concessão -->
+                <input type="hidden" name="metodo_conclusao" id="metodo_conclusao" value="">
+                
                 <div class="row">
                     <div class="col-md-6">
                         <div class="card bg-light mb-4">
@@ -82,6 +89,26 @@
                                         <option value="Vencida" {% if inc.status == "Vencida" %}selected{% endif %}>Vencida</option>
                                     </select>
                                 </div>
+                                
+                                <!-- Campos adicionais para concessão -->
+                                <div class="mb-3" id="concessaoGroup" style="display: none;">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i> Atenção: Ao concluir manualmente uma INC, é necessário fornecer uma justificativa e anexar o email de aprovação.
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="justificativa_conclusao" class="form-label">Justificativa da Conclusão <span class="text-danger">*</span></label>
+                                        <textarea class="form-control" id="justificativa_conclusao" name="justificativa_conclusao" rows="3" placeholder="Descreva brevemente a justificativa para conclusão"></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="email_aprovacao" class="form-label">Anexar Email de Aprovação <span class="text-danger">*</span></label>
+                                        <input type="file" class="form-control" id="email_aprovacao" name="email_aprovacao" accept=".eml,.msg">
+                                        <small class="form-text text-muted">Anexe o email (.eml ou .msg) contendo a aprovação para liberação por concessão.</small>
+                                    </div>
+                                    
+                                    <small class="form-text text-muted mt-2">Esta INC será marcada como "Liberada por Concessão" com a justificativa e email anexados.</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -125,30 +152,15 @@
                     </div>
                 </div>
 
-                <!-- Regular submit button now uses JavaScript to trigger direct form -->
+                <!-- Botões de ação -->
                 <div class="d-flex justify-content-between">
                     <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-secondary">
                         <i class="fas fa-times me-1"></i> Cancelar
                     </a>
-                    <button type="button" class="btn btn-primary" id="normalSubmitBtn" onclick="submitDirectForm()">
+                    <button type="button" class="btn btn-primary" id="normalSubmitBtn" onclick="validateAndSubmit()">
                         <i class="fas fa-save me-1"></i> Salvar Alterações
                     </button>
                 </div>
-            </form>
-            
-            <!-- Alternative direct submission form (now hidden) -->
-            <form action="{{ url_for('inc.editar_inc', inc_id=inc.id) }}" method="POST" enctype="multipart/form-data" id="directForm" style="display:none;">
-                <!-- Hidden fields -->
-                <input type="hidden" name="representante" id="hidden_representante">
-                <input type="hidden" name="fornecedor" id="hidden_fornecedor">
-                <input type="hidden" name="item" id="hidden_item">
-                <input type="hidden" name="quantidade_recebida" id="hidden_quantidade_recebida">
-                <input type="hidden" name="quantidade_com_defeito" id="hidden_quantidade_com_defeito">
-                <input type="hidden" name="descricao_defeito" id="hidden_descricao_defeito">
-                <input type="hidden" name="urgencia" id="hidden_urgencia">
-                <input type="hidden" name="acao_recomendada" id="hidden_acao_recomendada">
-                <input type="hidden" name="status" id="hidden_status">
-                <input type="hidden" name="fotos" id="hidden_fotos">
             </form>
         </div>
     </div>
@@ -157,40 +169,95 @@
 
 {% block scripts %}
 <script>
-// Isolated script for direct form submission
-function submitDirectForm() {
+document.addEventListener('DOMContentLoaded', function() {
+    // Get initial values
+    const initialStatus = document.getElementById('status').value;
+    const statusSelect = document.getElementById('status');
+    const concessaoGroup = document.getElementById('concessaoGroup');
+    const metodoInput = document.getElementById('metodo_conclusao');
+    
+    // Check if we need to show concessão field on page load
+    checkConcessaoVisibility(initialStatus);
+    
+    // Listen for status changes
+    statusSelect.addEventListener('change', function() {
+        checkConcessaoVisibility(this.value);
+    });
+    
+    // Function to check if we need to show the concessão field
+    function checkConcessaoVisibility(status) {
+        if (status === 'Concluída' && initialStatus !== 'Concluída') {
+            // Only show if changing TO Concluída
+            concessaoGroup.style.display = 'block';
+            metodoInput.value = 'concessao'; // Set the método to concessão
+            console.log("Status changed to Concluída, showing concessão form and setting metodo_conclusao to 'concessao'");
+        } else {
+            concessaoGroup.style.display = 'none';
+            metodoInput.value = ''; // Clear the método
+            console.log("Status not changing to Concluída, hiding concessão form");
+        }
+    }
+});
+
+// Validation function that checks for justification and email
+function validateAndSubmit() {
+    console.log("Validating form...");
+    
     // Change button to loading state
     const btn = document.getElementById('normalSubmitBtn');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Salvando...';
     btn.disabled = true;
     
-    // Copy values from main form to hidden form
-    document.getElementById('hidden_representante').value = document.getElementById('representante').value;
-    document.getElementById('hidden_fornecedor').value = document.getElementById('fornecedor').value;
-    document.getElementById('hidden_item').value = document.getElementById('item').value.toUpperCase();
-    document.getElementById('hidden_quantidade_recebida').value = document.getElementById('quantidade_recebida').value;
-    document.getElementById('hidden_quantidade_com_defeito').value = document.getElementById('quantidade_com_defeito').value;
-    document.getElementById('hidden_descricao_defeito').value = document.getElementById('descricao_defeito').value;
-    document.getElementById('hidden_urgencia').value = document.getElementById('urgencia').value;
-    document.getElementById('hidden_acao_recomendada').value = document.getElementById('acao_recomendada').value;
-    document.getElementById('hidden_status').value = document.getElementById('status').value;
+    // Check if we need justification
+    const initialStatus = "{{ inc.status }}";
+    const currentStatus = document.getElementById('status').value;
     
-    // Special handling for files
-    // Clone the file input to the direct form submission
-    const fileInput = document.getElementById('fotos');
-    const hiddenFileInput = document.createElement('input');
-    hiddenFileInput.type = 'file';
-    hiddenFileInput.name = 'fotos';
-    hiddenFileInput.multiple = true;
-    hiddenFileInput.files = fileInput.files;
-    
-    // Append the file input to the direct form
-    if (fileInput.files.length > 0) {
-        document.getElementById('directForm').appendChild(hiddenFileInput);
+    // If changing to Concluída manually, require justification and email file
+    if (currentStatus === 'Concluída' && initialStatus !== 'Concluída') {
+        document.getElementById('metodo_conclusao').value = 'concessao';
+        console.log("Setting metodo_conclusao to concessao");
+        
+        const justificativa = document.getElementById('justificativa_conclusao').value.trim();
+        const emailFile = document.getElementById('email_aprovacao').files[0];
+        
+        if (!justificativa) {
+            alert('É necessário fornecer uma justificativa ao concluir uma INC manualmente.');
+            btn.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Alterações';
+            btn.disabled = false;
+            return false;
+        }
+        
+        if (!emailFile) {
+            alert('É necessário anexar o email de aprovação ao concluir uma INC manualmente.');
+            btn.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Alterações';
+            btn.disabled = false;
+            return false;
+        }
+        
+        // Check file extension
+        const allowedExtensions = ['.eml', '.msg'];
+        const fileExtension = emailFile.name.substring(emailFile.name.lastIndexOf('.')).toLowerCase();
+        if (!allowedExtensions.includes(fileExtension)) {
+            alert('O arquivo anexado deve ser um email (.eml ou .msg).');
+            btn.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Alterações';
+            btn.disabled = false;
+            return false;
+        }
+        
+        // Store concessão data in JSON format in the hidden field
+        const concessaoData = {
+            justificativa: justificativa,
+            email_filename: emailFile.name,
+            data_concessao: new Date().toISOString()
+        };
+        
+        document.getElementById('concessao_data').value = JSON.stringify(concessaoData);
+        console.log("Concessão data set: ", JSON.stringify(concessaoData));
     }
     
-    // Submit the form directly
-    document.getElementById('directForm').submit();
+    console.log("Form validated, submitting...");
+    // Submit the form
+    document.getElementById('mainForm').submit();
 }
 
 // Extra safety measure - prevent the main form's default submission
@@ -199,10 +266,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mainForm) {
         mainForm.addEventListener('submit', function(e) {
             e.preventDefault(); // prevent default form submission
-            submitDirectForm(); // use our direct form instead
+            validateAndSubmit(); // use our validated form instead
             return false;
         });
     }
 });
 </script>
-{% endblock %} 
+{% endblock %}

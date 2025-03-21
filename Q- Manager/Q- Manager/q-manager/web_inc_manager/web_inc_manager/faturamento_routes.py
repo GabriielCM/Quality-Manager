@@ -119,6 +119,18 @@ def nova_solicitacao_faturamento():
                     # Atualizar status da INC para "Concluída"
                     old_status = inc.status
                     inc.status = "Concluída"
+
+                    # Adicionar dados de concessão indicando que foi concluído através da solicitação de faturamento
+                    concessao_data = {
+                        'justificativa': f'Concluído através da Solicitação de Faturamento #{novo_numero}',
+                        'data_concessao': datetime.now().isoformat(),
+                        'usuario_aprovacao': current_user.username,
+                        'usuario_id': current_user.id,
+                        'solicitacao_faturamento_id': solicitacao.id,
+                        'solicitacao_faturamento_numero': novo_numero,
+                        'metodo': 'faturamento'
+                    }
+                    inc.set_concessao_data(concessao_data)
                     
                     # Registrar a atualização da INC
                     log_user_activity(

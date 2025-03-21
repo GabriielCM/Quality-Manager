@@ -2,14 +2,17 @@ import os
 import logging
 import matplotlib
 matplotlib.use('Agg')  # Use the 'Agg' backend which doesn't require GUI
+
 from flask import Flask, redirect, url_for, render_template, flash, session
 from flask_session import Session
 from flask_login import LoginManager, current_user, login_required
 from werkzeug.security import generate_password_hash
-
+from flask_sqlalchemy import SQLAlchemy  # Adicione esta importação
+from flask_migrate import Migrate  # Adicione esta importação
+from datetime import datetime
 # Importar módulos do aplicativo
 from config import Config
-from models import db, User
+from models import db, User  # Importe db do models
 from utils import log_user_activity, save_file, remove_file
 
 # Importar rotas de cada módulo
@@ -25,11 +28,57 @@ import api_routes
 # Inicializar o aplicativo
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Inicializar extensões
 db.init_app(app)
+migrate = Migrate(app, db)  # Adicione esta linha
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = False
+
+@app.template_filter('date')
+def date_filter(value, format='%d/%m/%Y %H:%M'):
+    if not value:
+        return ''
+    
+    try:
+        # Se for uma string ISO
+        if isinstance(value, str):
+            try:
+                # Tenta parse ISO com timezone
+                dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except:
+                # Tenta outros formatos
+                try:
+                    dt = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%f')
+                except:
+                    try:
+                        dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
+                    except:
+                        return value
+        elif isinstance(value, datetime):
+            dt = value
+        else:
+            return str(value)
+        
+        return dt.strftime(format)
+    except Exception as e:
+        print(f"Erro ao formatar data: {e}")
+        return str(value)
+
+# Quando for inicializar o banco de dados
+with app.app_context():
+    db.create_all()
+    # Verificar se já existe um admin antes de criar
+    if not User.query.filter_by(username="admin").first():
+        admin = User(
+            username="admin", 
+            password=generate_password_hash("admin"),
+            is_admin=True
+        )
+        db.session.add(admin)
+        db.session.commit() 
 
 # Configurar login
 login_manager = LoginManager()

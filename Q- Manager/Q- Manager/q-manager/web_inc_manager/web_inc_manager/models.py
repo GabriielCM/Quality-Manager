@@ -7,27 +7,54 @@ db = SQLAlchemy()
 
 class INC(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nf = db.Column(db.Integer, nullable=False, unique=False)
-    data = db.Column(db.String(10), nullable=False)
-    
-    # Modificação: O representante agora é uma relação com a tabela User
-    representante_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    representante = db.relationship('User', backref=db.backref('incs_representadas', lazy=True))
-    
-    # Manter o campo de texto para compatibilidade com dados existentes
-    representante_nome = db.Column(db.String(100), nullable=True)
-    
-    fornecedor = db.Column(db.String(100), nullable=False)
-    item = db.Column(db.String(20), nullable=False)
+    nf = db.Column(db.Integer, nullable=False)
+    data = db.Column(db.String(20), nullable=False)
+    representante_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    representante_nome = db.Column(db.String(100), nullable=False)
+    fornecedor = db.Column(db.String(200), nullable=False)
+    item = db.Column(db.String(50), nullable=False)
     quantidade_recebida = db.Column(db.Integer, nullable=False)
     quantidade_com_defeito = db.Column(db.Integer, nullable=False)
-    descricao_defeito = db.Column(db.Text, default="")
-    urgencia = db.Column(db.String(20), default="Moderada")
-    acao_recomendada = db.Column(db.Text, default="")
-    fotos = db.Column(db.Text, default="[]")
-    status = db.Column(db.String(20), default="Em andamento")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    oc = db.Column(db.Integer, unique=True, nullable=False)
+    descricao_defeito = db.Column(db.Text)
+    urgencia = db.Column(db.String(20), nullable=False)
+    acao_recomendada = db.Column(db.Text)
+    fotos = db.Column(db.Text)  # JSON string of photo paths
+    oc = db.Column(db.Integer, nullable=False, unique=True)
+    status = db.Column(db.String(20), nullable=False, default='Em andamento')
+    
+    # Novo campo para dados de concessão
+    concessao_data = db.Column(db.Text, nullable=True)  # Armazenará JSON string
+    
+    def set_concessao_data(self, data):
+        """
+        Helper method to set concessao_data safely
+        
+        :param data: Dictionary with concessao details
+        """
+        if isinstance(data, dict):
+            self.concessao_data = json.dumps(data)
+        elif isinstance(data, str):
+            # Validate if it's a valid JSON string
+            try:
+                json.loads(data)
+                self.concessao_data = data
+            except json.JSONDecodeError:
+                raise ValueError("Invalid JSON string for concessao_data")
+        else:
+            raise TypeError("Concessao data must be a dictionary or a valid JSON string")
+    
+    def get_concessao_data(self):
+        """
+        Helper method to get concessao_data safely
+        
+        :return: Parsed concessao data or None
+        """
+        if self.concessao_data:
+            try:
+                return json.loads(self.concessao_data)
+            except json.JSONDecodeError:
+                return None
+        return None
 
 class LayoutSetting(db.Model):
     id = db.Column(db.Integer, primary_key=True)

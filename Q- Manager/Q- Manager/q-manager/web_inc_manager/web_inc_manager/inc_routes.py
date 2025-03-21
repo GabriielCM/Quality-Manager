@@ -1,11 +1,28 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify
+from flask import (
+    Blueprint, 
+    render_template, 
+    request, 
+    redirect, 
+    url_for, 
+    flash, 
+    send_file, 
+    jsonify, 
+    current_app
+)
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash
 from models import db, User, INC, Fornecedor
-from utils import validate_item_format, save_file, remove_file, log_user_activity, parse_date, format_date_for_db
+from utils import (
+    validate_item_format, 
+    save_file, 
+    remove_file, 
+    log_user_activity, 
+    parse_date, 
+    format_date_for_db
+)
 from datetime import datetime, timedelta
-from io import BytesIO
 import json
-import csv
 import os
 import socket
 import logging
@@ -46,6 +63,18 @@ def api_update_inc_status(inc_id):
         
         # Update INC status
         inc.status = new_status
+
+        # Se status está mudando para Concluída, adicionar dados de concessão
+        if new_status == 'Concluída' and old_status != 'Concluída':
+            concessao_data = {
+                'justificativa': 'Atualizado via API',
+                'data_concessao': datetime.now().isoformat(),
+                'usuario_aprovacao': current_user.username,
+                'usuario_id': current_user.id,
+                'metodo': 'api'
+            }
+            inc.set_concessao_data(concessao_data)
+        
         db.session.commit()
         
         # Record the status update
@@ -75,6 +104,165 @@ def api_update_inc_status(inc_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@inc_bp.route('/editar_inc/<int:inc_id>', methods=['GET', 'POST'])
+@login_required
+def editar_inc(inc_id):
+    """
+    Função para editar uma INC existente.
+    Permite a atualização de todos os campos e processamento de concessão para encerramento da INC.
+    """
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('cadastro_inc'):
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    inc = INC.query.get_or_404(inc_id)
+    representantes = User.query.filter_by(is_representante=True).all()
+    fotos = json.loads(inc.fotos) if inc.fotos else []
+
+    if request.method == 'POST':
+        try:
+            # Salvar valores originais para o log
+            original_values = {
+                'item': inc.item,
+                'representante_id': inc.representante_id,
+                'fornecedor': inc.fornecedor,
+                'quantidade_recebida': inc.quantidade_recebida,
+                'quantidade_com_defeito': inc.quantidade_com_defeito,
+                'descricao_defeito': inc.descricao_defeito,
+                'urgencia': inc.urgencia, 
+                'acao_recomendada': inc.acao_recomendada,
+                'status': inc.status
+            }
+            
+            # Get form data
+            item = request.form['item'].upper()
+            representante_id = int(request.form['representante'])
+            fornecedor = request.form['fornecedor']
+            quantidade_recebida = int(request.form['quantidade_recebida'])
+            quantidade_com_defeito = int(request.form['quantidade_com_defeito'])
+            descricao_defeito = request.form['descricao_defeito']
+            urgencia = request.form['urgencia']
+            acao_recomendada = request.form['acao_recomendada']
+            status = request.form['status']
+            
+            # Verificar se é uma concessão
+            metodo_conclusao = request.form.get('metodo_conclusao', '')
+            
+            # Status changed to Concluída manually
+            if status == 'Concluída' and inc.status != 'Concluída' and metodo_conclusao == 'concessao':
+                # Validate concessao form data
+                justificativa = request.form.get('justificativa_conclusao', '').strip()
+                email_file = request.files.get('email_aprovacao')
+                
+                if not justificativa or not email_file:
+                    flash('É necessário fornecer justificativa e email de aprovação.', 'danger')
+                    return render_template('editar_inc.html', inc=inc, representantes=representantes, fotos=fotos)
+                
+                # Prepare concessao data
+                concessao_data = {
+                    'justificativa': justificativa,
+                    'email_filename': secure_filename(email_file.filename),
+                    'data_concessao': datetime.now().isoformat(),
+                    'usuario_aprovacao': current_user.username,  # Adiciona o usuário que aprovou
+                    'usuario_id': current_user.id,              # Adiciona o ID do usuário para referência
+                    'metodo': 'concessao'
+                }
+                
+                # Save email file
+                email_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'emails')
+                os.makedirs(email_folder, exist_ok=True)
+                email_path = os.path.join(email_folder, concessao_data['email_filename'])
+                email_file.save(email_path)
+                concessao_data['email_path'] = email_path
+                
+                # Use the new set_concessao_data method
+                inc.set_concessao_data(concessao_data)
+            
+            # Processar novas fotos, se houver
+            if 'fotos' in request.files:
+                files = request.files.getlist('fotos')
+                for file in files:
+                    if file and file.filename:
+                        filepath = save_file(file, ['png', 'jpg', 'jpeg', 'gif'])
+                        if filepath:
+                            fotos.append(filepath)
+            
+            # Update INC data
+            inc.representante_id = representante_id
+            inc.representante_nome = User.query.get(representante_id).username
+            inc.fornecedor = fornecedor
+            inc.item = item
+            inc.quantidade_recebida = quantidade_recebida
+            inc.quantidade_com_defeito = quantidade_com_defeito
+            inc.descricao_defeito = descricao_defeito
+            inc.urgencia = urgencia
+            inc.acao_recomendada = acao_recomendada
+            inc.status = status
+            inc.fotos = json.dumps(fotos)
+            
+            # Registrar mudanças para o log
+            changes = {}
+            for key, value in original_values.items():
+                new_value = getattr(inc, key)
+                if key == 'representante_id':
+                    new_value = int(new_value)
+                if new_value != value:
+                    changes[key] = {'old': value, 'new': new_value}
+            
+            # Registrar a edição da INC
+            if changes:
+                log_user_activity(
+                    user_id=current_user.id,
+                    action="update",
+                    entity_type="inc",
+                    entity_id=inc.id,
+                    details={
+                        "changes": changes,
+                        "concessao": bool(metodo_conclusao == 'concessao' and status == 'Concluída' and original_values['status'] != 'Concluída')
+                    }
+                )
+            
+            # Commit changes
+            db.session.commit()
+            
+            flash('INC atualizada com sucesso!', 'success')
+            return redirect(url_for('inc.visualizar_incs'))
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"ERROR: {str(e)}")
+            flash(f'Erro ao atualizar INC: {str(e)}', 'danger')
+            return render_template('editar_inc.html', inc=inc, representantes=representantes, fotos=fotos)
+    
+    # GET request - just render the form
+    return render_template('editar_inc.html', inc=inc, representantes=representantes, fotos=fotos)
+
+@inc_bp.route('/detalhes_inc/<int:inc_id>')
+@login_required
+def detalhes_inc(inc_id):
+    # Verificar se o usuário tem permissão
+    if not current_user.is_admin and not current_user.has_permission('visualizar_incs'):
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    inc = INC.query.get_or_404(inc_id)
+    fotos = json.loads(inc.fotos) if inc.fotos else []
+    
+    # Registrar visualização detalhada de INC
+    log_user_activity(
+        user_id=current_user.id,
+        action="view",
+        entity_type="inc",
+        entity_id=inc.id,
+        details={
+            "nf": inc.nf,
+            "item": inc.item
+        }
+    )
+    
+    return render_template('detalhes_inc.html', inc=inc, fotos=fotos)
 
 @inc_bp.route('/cadastro_inc', methods=['GET', 'POST'])
 @login_required
@@ -205,166 +393,6 @@ def visualizar_incs():
 
     return render_template('visualizar_incs.html', incs=incs, pagination=pagination)
 
-@inc_bp.route('/detalhes_inc/<int:inc_id>')
-@login_required
-def detalhes_inc(inc_id):
-    # Verificar se o usuário tem permissão
-    if not current_user.is_admin and not current_user.has_permission('visualizar_incs'):
-        flash('Você não tem permissão para acessar esta página.', 'danger')
-        return redirect(url_for('main_menu'))
-    
-    inc = INC.query.get_or_404(inc_id)
-    fotos = json.loads(inc.fotos)
-    
-    # Registrar visualização detalhada de INC
-    log_user_activity(
-        user_id=current_user.id,
-        action="view",
-        entity_type="inc",
-        entity_id=inc.id,
-        details={
-            "nf": inc.nf,
-            "item": inc.item
-        }
-    )
-    
-    return render_template('detalhes_inc.html', inc=inc, fotos=fotos)
-
-@inc_bp.route('/editar_inc/<int:inc_id>', methods=['GET', 'POST'])
-@login_required
-def editar_inc(inc_id):
-    # Verificar se o usuário tem permissão
-    if not current_user.is_admin and not current_user.has_permission('cadastro_inc'):
-        flash('Você não tem permissão para acessar esta página.', 'danger')
-        return redirect(url_for('main_menu'))
-    
-    inc = INC.query.get_or_404(inc_id)
-    representantes = User.query.filter_by(is_representante=True).all()
-    fotos = json.loads(inc.fotos) if inc.fotos else []
-
-    if request.method == 'POST':
-        # Salvar valores originais para o log
-        original_values = {
-            'item': inc.item,
-            'representante_id': inc.representante_id,
-            'fornecedor': inc.fornecedor,
-            'quantidade_recebida': inc.quantidade_recebida,
-            'quantidade_com_defeito': inc.quantidade_com_defeito,
-            'descricao_defeito': inc.descricao_defeito,
-            'urgencia': inc.urgencia, 
-            'acao_recomendada': inc.acao_recomendada,
-            'status': inc.status
-        }
-        
-        # Get form data
-        item = request.form['item'].upper()
-        representante_id = int(request.form['representante'])
-        fornecedor = request.form['fornecedor']
-        quantidade_recebida = int(request.form['quantidade_recebida'])
-        quantidade_com_defeito = int(request.form['quantidade_com_defeito'])
-        descricao_defeito = request.form['descricao_defeito']
-        urgencia = request.form['urgencia']
-        acao_recomendada = request.form['acao_recomendada']
-        status = request.form['status']
-        
-        # Buscar representante
-        representante_user = User.query.get(representante_id)
-        if not representante_user:
-            flash('Representante inválido.', 'danger')
-            return render_template('editar_inc.html', inc=inc, representantes=representantes, fotos=fotos)
-            
-        # Rastrear mudanças para o log
-        changes = {}
-        if item != inc.item:
-            changes['item'] = {'old': inc.item, 'new': item}
-        if representante_id != inc.representante_id:
-            changes['representante'] = {
-                'old': inc.representante_nome,
-                'new': representante_user.username
-            }
-        if fornecedor != inc.fornecedor:
-            changes['fornecedor'] = {'old': inc.fornecedor, 'new': fornecedor}
-        if quantidade_recebida != inc.quantidade_recebida:
-            changes['quantidade_recebida'] = {'old': inc.quantidade_recebida, 'new': quantidade_recebida}
-        if quantidade_com_defeito != inc.quantidade_com_defeito:
-            changes['quantidade_com_defeito'] = {'old': inc.quantidade_com_defeito, 'new': quantidade_com_defeito}
-        if descricao_defeito != inc.descricao_defeito:
-            changes['descricao_defeito'] = {'old': inc.descricao_defeito, 'new': descricao_defeito}
-        if urgencia != inc.urgencia:
-            changes['urgencia'] = {'old': inc.urgencia, 'new': urgencia}
-        if acao_recomendada != inc.acao_recomendada:
-            changes['acao_recomendada'] = {'old': inc.acao_recomendada, 'new': acao_recomendada}
-        if status != inc.status:
-            changes['status'] = {'old': inc.status, 'new': status}
-        
-        # Validate data
-        valid = True
-        
-        if not validate_item_format(item):
-            flash('Formato do item inválido. Deve ser 3 letras maiúsculas, ponto e 5 dígitos, ex: MPR.02199', 'danger')
-            valid = False
-        
-        if quantidade_com_defeito > quantidade_recebida:
-            flash('Quantidade com defeito não pode ser maior que a quantidade recebida.', 'danger')
-            valid = False
-        
-        if not valid:
-            return render_template('editar_inc.html', inc=inc, representantes=representantes, fotos=fotos)
-        
-        # Update INC data
-        inc.representante_id = representante_id
-        inc.representante_nome = representante_user.username
-        inc.fornecedor = fornecedor
-        inc.item = item
-        inc.quantidade_recebida = quantidade_recebida
-        inc.quantidade_com_defeito = quantidade_com_defeito
-        inc.descricao_defeito = descricao_defeito
-        inc.urgencia = urgencia
-        inc.acao_recomendada = acao_recomendada
-        inc.status = status
-
-        # Process new photos
-        new_fotos_added = 0
-        if 'fotos' in request.files:
-            files = request.files.getlist('fotos')
-            for file in files:
-                if file and file.filename:
-                    filepath = save_file(file, ['png', 'jpg', 'jpeg', 'gif'])
-                    if filepath:
-                        fotos.append(filepath)
-                        new_fotos_added += 1
-
-        inc.fotos = json.dumps(fotos)
-        
-        # Registrar a edição da INC
-        if changes or new_fotos_added > 0:
-            if new_fotos_added > 0:
-                changes['fotos'] = {'action': 'added', 'count': new_fotos_added}
-                
-            log_user_activity(
-                user_id=current_user.id,
-                action="update",
-                entity_type="inc",
-                entity_id=inc.id,
-                details={
-                    "nf": inc.nf,
-                    "item": inc.item,
-                    "changes": changes
-                }
-            )
-        
-        # Save changes to database
-        try:
-            db.session.commit()
-            flash('INC atualizada com sucesso!', 'success')
-            return redirect(url_for('inc.visualizar_incs'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao atualizar INC: {str(e)}', 'danger')
-            print(f"Error saving INC: {str(e)}")
-    
-    # GET request - just render the form
-    return render_template('editar_inc.html', inc=inc, representantes=representantes, fotos=fotos)
 
 @inc_bp.route('/remover_foto_inc/<int:inc_id>/<path:foto>', methods=['POST'])
 @login_required
