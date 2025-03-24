@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block title %}Visualização da Migração{% endblock %}
+
+{% block styles %}
+<style>
+    .table-container {
+        margin-bottom: 30px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .table-header {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .sample-data {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .sample-data pre {
+        margin: 0;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 0;
+        border: none;
+        font-size: 0.9rem;
+    }
+    
+    .table-footer {
+        background-color: #f8f9fa;
+        padding: 10px 15px;
+        border-top: 1px solid #dee2e6;
+    }
+    
+    .badge-table {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h1 class="mb-4 text-center">Visualização da Migração</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0"><i class="fas fa-database mr-2"></i>Tabelas Encontradas</h3>
+        </div>
+        <div class="card-body">
+            <p>O banco de dados contém as seguintes tabelas. Selecione quais deseja migrar:</p>
+            
+            <form action="{{ url_for('migration.migrate_database') }}" method="POST">
+                <input type="hidden" name="db_path" value="{{ db_path }}">
+                
+                <div class="row mb-4">
+                    <div class="col-12 text-right">
+                        <button type="button" class="btn btn-sm btn-info" id="select-all">Selecionar Todas</button>
+                        <button type="button" class="btn btn-sm btn-secondary" id="deselect-all">Desmarcar Todas</button>
+                    </div>
+                </div>
+                
+                {% for table_name, table_info in db_info.items() %}
+                <div class="table-container mb-4">
+                    <div class="table-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input table-checkbox" 
+                                       id="table_{{ table_name }}" name="tables" value="{{ table_name }}">
+                                <label class="custom-control-label" for="table_{{ table_name }}">
+                                    <h5 class="mb-0">{{ table_name }}</h5>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge badge-primary badge-table">
+                                <i class="fas fa-list"></i> {{ table_info.count }} registros
+                            </span>
+                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    data-toggle="collapse" data-target="#collapse_{{ table_name }}">
+                                <i class="fas fa-eye"></i> Visualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="collapse" id="collapse_{{ table_name }}">
+                        <div class="p-3 border-bottom">
+                            <h6 class="mb-2">Estrutura da Tabela:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nome</th>
+                                            <th>Tipo</th>
+                                            <th>Nulo</th>
+                                            <th>Padrão</th>
+                                            <th>Chave Primária</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for column in table_info.columns %}
+                                        <tr>
+                                            <td>{{ column.cid }}</td>
+                                            <td>{{ column.name }}</td>
+                                            <td>{{ column.type }}</td>
+                                            <td>{{ 'Sim' if column.notnull == 0 else 'Não' }}</td>
+                                            <td>{{ column.dflt_value if column.dflt_value else '-' }}</td>
+                                            <td>{{ 'Sim' if column.pk == 1 else 'Não' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="p-3">
+                            <h6 class="mb-2">Amostra de Dados:</h6>
+                            <div class="sample-data">
+                                <pre>{{ table_info.sample | tojson(indent=2) }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-footer">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            A tabela será mapeada para o modelo correspondente no sistema atual.
+                        </small>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Informação:</strong> A migração irá tentar mapear automaticamente os campos entre as tabelas de origem e destino.
+                    Campos incompatíveis serão ignorados. Registros duplicados não serão importados.
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('migration.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-exchange-alt"></i> Iniciar Migração
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Botão para selecionar todas as tabelas
+        document.getElementById('select-all').addEventListener('click', function() {
+            document.querySelectorAll('.table-checkbox').forEach(function(checkbox) {
+                checkbox.checked = true;
+            });
+        });
+        
+        // Botão para desmarcar todas as tabelas
+        document.getElementById('deselect-all').addEventListener('click', function() {
+            document.querySelectorAll('.table-checkbox').forEach(function(checkbox) {
+                checkbox.checked = false;
+            });
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %} 

@@ -5388,3 +5388,262 @@ ModuleNotFoundError: No module named 'web_inc_manager'
 2025-03-23 22:21:38,221 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:21:38] "GET /api/notificacoes HTTP/1.1" 200 -
 2025-03-23 22:21:48,224 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:21:48] "[32mGET /api/notificacoes HTTP/1.1[0m" 302 -
 2025-03-23 22:21:48,263 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:21:48] "GET /auth/login?next=%2Fapi%2Fnotificacoes HTTP/1.1" 200 -
+2025-03-23 22:29:16,688 - INFO - _internal.py:224 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.3:5000
+2025-03-23 22:29:16,688 - INFO - _internal.py:224 - [33mPress CTRL+C to quit[0m
+2025-03-23 22:29:26,226 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:26] "[32mGET /api/notificacoes HTTP/1.1[0m" 302 -
+2025-03-23 22:29:26,264 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:26] "GET /auth/login?next=%2Fapi%2Fnotificacoes HTTP/1.1" 200 -
+2025-03-23 22:29:30,950 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:30] "[32mGET /inc/visualizar_incs HTTP/1.1[0m" 302 -
+2025-03-23 22:29:30,965 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:30] "GET /auth/login?next=%2Finc%2Fvisualizar_incs HTTP/1.1" 200 -
+2025-03-23 22:29:31,065 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:31] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:29:31,065 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:31] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:29:32,629 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:32] "[32mPOST /auth/login?next=%2Finc%2Fvisualizar_incs HTTP/1.1[0m" 302 -
+2025-03-23 22:29:32,665 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:32] "GET /inc/visualizar_incs HTTP/1.1" 200 -
+2025-03-23 22:29:32,702 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:32] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:29:32,703 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:32] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:29:32,770 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:32] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:29:32,784 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:32] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:29:41,019 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:41] "GET /main_menu HTTP/1.1" 200 -
+2025-03-23 22:29:41,059 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:41] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:29:41,060 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:41] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:29:41,120 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:41] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:29:41,138 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:41] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:29:51,224 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:29:51] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:30:01,644 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:30:01] "GET /migration/ HTTP/1.1" 200 -
+2025-03-23 22:30:01,683 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:30:01] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:30:01,684 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:30:01] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:30:01,729 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:30:01] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:30:01,738 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:30:01] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:30:11,732 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:30:11] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:30:22,240 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:30:22] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:30:41,741 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:30:41] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:31:02,226 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:02] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:31:14,862 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:14] "GET /inc/detalhes_inc/3 HTTP/1.1" 200 -
+2025-03-23 22:31:14,909 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:14] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:31:14,910 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:14] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:31:14,965 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:14] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:31:14,977 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:14] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:31:16,661 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:16] "GET /inc/visualizar_incs HTTP/1.1" 200 -
+2025-03-23 22:31:16,705 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:16] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:31:16,705 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:16] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:31:16,762 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:16] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:31:16,781 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:16] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:31:18,651 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:18] "GET /inspecao/listar_rotinas HTTP/1.1" 200 -
+2025-03-23 22:31:18,693 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:18] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:31:18,693 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:18] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:31:18,750 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:18] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:31:18,770 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:18] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:31:23,460 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:23] "POST /api/notificacoes/marcar-todas-lidas HTTP/1.1" 200 -
+2025-03-23 22:31:27,451 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:27] "GET /main_menu HTTP/1.1" 200 -
+2025-03-23 22:31:27,487 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:27] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:31:27,490 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:27] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:31:27,549 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:27] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:31:27,570 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:27] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:31:38,231 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:38] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:31:58,228 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:31:58] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:32:18,239 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:32:18] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:33:19,231 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:33:19] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:34:20,218 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:34:20] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:34:53,853 - INFO - _internal.py:224 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.3:5000
+2025-03-23 22:34:53,854 - INFO - _internal.py:224 - [33mPress CTRL+C to quit[0m
+2025-03-23 22:34:54,624 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:34:54] "[32mGET /api/notificacoes HTTP/1.1[0m" 302 -
+2025-03-23 22:34:54,671 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:34:54] "GET /auth/login?next=%2Fapi%2Fnotificacoes HTTP/1.1" 200 -
+2025-03-23 22:34:56,177 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:34:56] "[32mGET /main_menu HTTP/1.1[0m" 302 -
+2025-03-23 22:34:56,192 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:34:56] "GET /auth/login?next=%2Fmain_menu HTTP/1.1" 200 -
+2025-03-23 22:34:56,319 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:34:56] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:34:56,320 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:34:56] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:34:56,320 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:34:56] "GET /static/js/login.js HTTP/1.1" 200 -
+2025-03-23 22:35:33,102 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:35:33] "[32mGET /main_menu HTTP/1.1[0m" 302 -
+2025-03-23 22:35:33,117 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:35:33] "GET /auth/login?next=%2Fmain_menu HTTP/1.1" 200 -
+2025-03-23 22:35:33,160 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:35:33] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:35:33,160 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:35:33] "[36mGET /static/js/login.js HTTP/1.1[0m" 304 -
+2025-03-23 22:35:33,162 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:35:33] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:36:03,795 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:36:03] "GET /auth/login?next=%2Fmain_menu HTTP/1.1" 200 -
+2025-03-23 22:36:03,831 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:36:03] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:36:03,831 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:36:03] "[36mGET /static/js/login.js HTTP/1.1[0m" 304 -
+2025-03-23 22:36:03,834 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:36:03] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:37:42,915 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:42] "GET /auth/login?next=%2Fmain_menu HTTP/1.1" 200 -
+2025-03-23 22:37:42,948 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:42] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:37:42,948 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:42] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:37:42,950 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:42] "GET /static/js/login.js HTTP/1.1" 200 -
+2025-03-23 22:37:45,074 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:45] "[32mPOST /auth/login?next=%2Fmain_menu HTTP/1.1[0m" 302 -
+2025-03-23 22:37:45,142 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:45] "GET /main_menu HTTP/1.1" 200 -
+2025-03-23 22:37:45,185 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:45] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:37:45,186 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:45] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:37:45,247 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:45] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:37:45,267 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:45] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:37:55,260 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:37:55] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:38:06,227 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:06] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:38:16,228 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:16] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:38:26,231 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:26] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:38:45,257 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:45] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:38:51,028 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:51] "GET /inspecao/listar_rotinas HTTP/1.1" 200 -
+2025-03-23 22:38:51,074 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:51] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:38:51,074 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:51] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:38:51,145 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:51] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:38:51,161 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:51] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:38:53,102 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:53] "[32mGET /inspecao/rotina_inspecao HTTP/1.1[0m" 302 -
+2025-03-23 22:38:53,118 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:53] "GET /inspecao/set_crm_token HTTP/1.1" 200 -
+2025-03-23 22:38:53,154 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:53] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:38:53,156 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:53] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:38:53,206 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:53] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:38:53,211 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:53] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:38:55,541 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:55] "[32mPOST /inspecao/set_crm_token HTTP/1.1[0m" 302 -
+2025-03-23 22:38:55,556 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:55] "[32mGET /inspecao/visualizar_registros HTTP/1.1[0m" 302 -
+2025-03-23 22:38:55,575 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:55] "GET /inspecao/rotina_inspecao HTTP/1.1" 200 -
+2025-03-23 22:38:55,622 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:55] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:38:55,624 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:55] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:38:55,676 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:55] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:38:55,688 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:55] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:38:59,036 - INFO - utils.py:333 - Usando codificação: utf-8
+2025-03-23 22:38:59,036 - WARNING - utils.py:360 - Número de aviso inválido na linha 6: A.R. A.R.
+2025-03-23 22:38:59,036 - WARNING - utils.py:391 - OC inválida na linha 11: 08/02/2025 RECEB
+2025-03-23 22:38:59,037 - WARNING - utils.py:391 - OC inválida na linha 12: 08/02/2025 RECEB
+2025-03-23 22:38:59,037 - WARNING - utils.py:391 - OC inválida na linha 13: 05/02/2025 RECEB
+2025-03-23 22:38:59,038 - WARNING - utils.py:391 - OC inválida na linha 14: 05/02/2025 RECEB
+2025-03-23 22:38:59,038 - WARNING - utils.py:391 - OC inválida na linha 16: 09/02/2025 RECEB
+2025-03-23 22:38:59,038 - WARNING - utils.py:391 - OC inválida na linha 24: 15/02/2025 RECEB
+2025-03-23 22:38:59,039 - INFO - utils.py:415 - Processados 9 registros do arquivo LST
+2025-03-23 22:38:59,046 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:59] "[32mPOST /inspecao/rotina_inspecao HTTP/1.1[0m" 302 -
+2025-03-23 22:38:59,076 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:59] "GET /inspecao/visualizar_registros HTTP/1.1" 200 -
+2025-03-23 22:38:59,112 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:59] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:38:59,112 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:59] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:38:59,179 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:38:59] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:39:00,191 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.01990
+2025-03-23 22:39:00,194 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.01990
+2025-03-23 22:39:00,196 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.00259
+2025-03-23 22:39:00,196 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.00258
+2025-03-23 22:39:00,197 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.00878
+2025-03-23 22:39:00,203 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/MPR.01990 HTTP/1.1" 200 -
+2025-03-23 22:39:00,205 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.00258
+2025-03-23 22:39:00,206 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.00878
+2025-03-23 22:39:00,206 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.02126
+2025-03-23 22:39:00,220 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/MPR.00258 HTTP/1.1" 200 -
+2025-03-23 22:39:00,220 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.02126
+2025-03-23 22:39:00,221 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.00259
+2025-03-23 22:39:00,224 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/MPR.01990 HTTP/1.1" 200 -
+2025-03-23 22:39:00,230 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/MPR.00878 HTTP/1.1" 200 -
+2025-03-23 22:39:00,232 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/MPR.00258 HTTP/1.1" 200 -
+2025-03-23 22:39:00,243 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/MPR.00259 HTTP/1.1" 200 -
+2025-03-23 22:39:00,246 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/MPR.00878 HTTP/1.1" 200 -
+2025-03-23 22:39:00,272 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/MPR.02126 HTTP/1.1" 200 -
+2025-03-23 22:39:00,281 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/MPR.02126 HTTP/1.1" 200 -
+2025-03-23 22:39:00,286 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/MPR.00259 HTTP/1.1" 200 -
+2025-03-23 22:39:00,398 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.02123
+2025-03-23 22:39:00,399 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: PRB.00349
+2025-03-23 22:39:00,400 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.02123
+2025-03-23 22:39:00,401 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.02167
+2025-03-23 22:39:00,401 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: PRB.00349
+2025-03-23 22:39:00,402 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item PRB.00349
+2025-03-23 22:39:00,404 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.02167
+2025-03-23 22:39:00,404 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item PRB.00349
+2025-03-23 22:39:00,409 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/MPR.02123 HTTP/1.1" 200 -
+2025-03-23 22:39:00,418 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/MPR.02123 HTTP/1.1" 200 -
+2025-03-23 22:39:00,428 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/PRB.00349 HTTP/1.1" 200 -
+2025-03-23 22:39:00,438 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/PRB.00349 HTTP/1.1" 200 -
+2025-03-23 22:39:00,444 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/MPR.02167 HTTP/1.1" 200 -
+2025-03-23 22:39:00,454 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/MPR.02167 HTTP/1.1" 200 -
+2025-03-23 22:39:00,460 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/historico_incs/PRB.00349 HTTP/1.1" 200 -
+2025-03-23 22:39:00,469 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:00] "GET /inspecao/api/plano_inspecao/PRB.00349 HTTP/1.1" 200 -
+2025-03-23 22:39:09,221 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:09] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:39:29,226 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:29] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:39:39,237 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:39] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:39:59,229 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:39:59] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:40:13,443 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:13] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:40:17,681 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:17] "GET /inspecao/visualizar_registros HTTP/1.1" 200 -
+2025-03-23 22:40:17,714 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:17] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:40:17,716 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:17] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:40:17,778 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:17] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:40:17,806 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:17] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:40:18,801 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.01990
+2025-03-23 22:40:18,802 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.00258
+2025-03-23 22:40:18,804 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.01990
+2025-03-23 22:40:18,804 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.00258
+2025-03-23 22:40:18,805 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.00878
+2025-03-23 22:40:18,806 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.00259
+2025-03-23 22:40:18,811 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.02126
+2025-03-23 22:40:18,828 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/historico_incs/MPR.01990 HTTP/1.1" 200 -
+2025-03-23 22:40:18,838 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.00259
+2025-03-23 22:40:18,838 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.00878
+2025-03-23 22:40:18,839 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.02126
+2025-03-23 22:40:18,844 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/historico_incs/MPR.00258 HTTP/1.1" 200 -
+2025-03-23 22:40:18,854 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/plano_inspecao/MPR.00258 HTTP/1.1" 200 -
+2025-03-23 22:40:18,857 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/plano_inspecao/MPR.01990 HTTP/1.1" 200 -
+2025-03-23 22:40:18,861 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/historico_incs/MPR.00878 HTTP/1.1" 200 -
+2025-03-23 22:40:18,872 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/plano_inspecao/MPR.00878 HTTP/1.1" 200 -
+2025-03-23 22:40:18,875 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/historico_incs/MPR.02126 HTTP/1.1" 200 -
+2025-03-23 22:40:18,883 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/plano_inspecao/MPR.02126 HTTP/1.1" 200 -
+2025-03-23 22:40:18,891 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/historico_incs/MPR.00259 HTTP/1.1" 200 -
+2025-03-23 22:40:18,900 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:18] "GET /inspecao/api/plano_inspecao/MPR.00259 HTTP/1.1" 200 -
+2025-03-23 22:40:19,017 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.02123
+2025-03-23 22:40:19,017 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: MPR.02167
+2025-03-23 22:40:19,019 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.02123
+2025-03-23 22:40:19,020 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: PRB.00349
+2025-03-23 22:40:19,020 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item MPR.02167
+2025-03-23 22:40:19,021 - INFO - inspecao_routes.py:58 - Buscando histórico de INCs para item: PRB.00349
+2025-03-23 22:40:19,021 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item PRB.00349
+2025-03-23 22:40:19,027 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:19] "GET /inspecao/api/historico_incs/MPR.02123 HTTP/1.1" 200 -
+2025-03-23 22:40:19,040 - INFO - inspecao_routes.py:62 - Encontradas 0 INCs para o item PRB.00349
+2025-03-23 22:40:19,043 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:19] "GET /inspecao/api/plano_inspecao/MPR.02123 HTTP/1.1" 200 -
+2025-03-23 22:40:19,063 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:19] "GET /inspecao/api/historico_incs/PRB.00349 HTTP/1.1" 200 -
+2025-03-23 22:40:19,071 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:19] "GET /inspecao/api/plano_inspecao/PRB.00349 HTTP/1.1" 200 -
+2025-03-23 22:40:19,079 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:19] "GET /inspecao/api/historico_incs/PRB.00349 HTTP/1.1" 200 -
+2025-03-23 22:40:19,087 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:19] "GET /inspecao/api/plano_inspecao/PRB.00349 HTTP/1.1" 200 -
+2025-03-23 22:40:19,095 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:19] "GET /inspecao/api/historico_incs/MPR.02167 HTTP/1.1" 200 -
+2025-03-23 22:40:19,104 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:19] "GET /inspecao/api/plano_inspecao/MPR.02167 HTTP/1.1" 200 -
+2025-03-23 22:40:32,172 - INFO - _internal.py:224 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.3:5000
+2025-03-23 22:40:32,173 - INFO - _internal.py:224 - [33mPress CTRL+C to quit[0m
+2025-03-23 22:40:35,928 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:35] "[32mGET / HTTP/1.1[0m" 302 -
+2025-03-23 22:40:35,962 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:35] "GET /auth/login HTTP/1.1" 200 -
+2025-03-23 22:40:36,067 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:36] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:40:36,085 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:36] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:40:36,086 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:36] "[36mGET /static/js/login.js HTTP/1.1[0m" 304 -
+2025-03-23 22:40:38,203 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:38] "[32mPOST /auth/login HTTP/1.1[0m" 302 -
+2025-03-23 22:40:38,277 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:38] "GET /main_menu HTTP/1.1" 200 -
+2025-03-23 22:40:38,321 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:38] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:40:38,322 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:38] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:40:38,410 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:38] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:40:38,437 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:38] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:40:49,224 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:49] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:40:59,234 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:40:59] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:41:19,242 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:41:19] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:41:39,241 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:41:39] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:41:59,232 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:41:59] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:42:09,236 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:42:09] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:42:26,231 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:42:26] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:43:05,128 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:05] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:43:08,942 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:08] "GET /main_menu HTTP/1.1" 200 -
+2025-03-23 22:43:08,982 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:08] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:43:08,985 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:08] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:43:09,051 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:09] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:43:09,076 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:09] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:43:30,712 - INFO - _internal.py:224 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.3:5000
+2025-03-23 22:43:30,712 - INFO - _internal.py:224 - [33mPress CTRL+C to quit[0m
+2025-03-23 22:43:31,462 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:31] "[32mGET / HTTP/1.1[0m" 302 -
+2025-03-23 22:43:31,488 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:31] "GET /auth/login HTTP/1.1" 200 -
+2025-03-23 22:43:31,594 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:31] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:43:31,626 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:31] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:43:31,631 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:31] "[36mGET /static/js/login.js HTTP/1.1[0m" 304 -
+2025-03-23 22:43:37,360 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:37] "[32mPOST /auth/login HTTP/1.1[0m" 302 -
+2025-03-23 22:43:37,434 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:37] "GET /main_menu HTTP/1.1" 200 -
+2025-03-23 22:43:37,469 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:37] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:43:37,470 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:37] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:43:37,563 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:37] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:43:37,583 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:37] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-23 22:43:46,303 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:46] "GET /main_menu HTTP/1.1" 200 -
+2025-03-23 22:43:46,334 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:46] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-23 22:43:46,334 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:46] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-23 22:43:46,395 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:46] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:43:56,394 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:56] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-23 22:44:07,229 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:44:07] "GET /api/notificacoes HTTP/1.1" 200 -

@@ -22,6 +22,9 @@
         }
         {% endfor %}
     </style>
+    
+    <!-- Bloco para estilos adicionais -->
+    {% block styles %}{% endblock %}
 </head>
 <body>
     <div class="wrapper">
@@ -116,6 +119,9 @@
                         </li>
                         <li>
                             <a href="{{ url_for('auth.editar_layout') }}">Editar Layout</a>
+                        </li>
+                        <li>
+                            <a href="{{ url_for('migration.index') }}"><i class="fas fa-database me-2"></i>Migração de Banco de Dados</a>
                         </li>
                     </ul>
                 </li>

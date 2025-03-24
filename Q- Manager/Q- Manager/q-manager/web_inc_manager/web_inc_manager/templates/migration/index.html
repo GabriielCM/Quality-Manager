@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Migração de Banco de Dados{% endblock %}
+
+{% block styles %}
+<style>
+    .upload-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    
+    .upload-icon {
+        font-size: 3rem;
+        color: #007bff;
+        margin-bottom: 20px;
+    }
+    
+    .info-icon {
+        color: #17a2b8;
+    }
+    
+    .alert-box {
+        background-color: #f8f9fa;
+        border-left: 4px solid #17a2b8;
+        padding: 10px 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h1 class="mb-4 text-center">Migração de Banco de Dados</h1>
+    
+    <div class="upload-container">
+        <div class="text-center">
+            <i class="fas fa-database upload-icon"></i>
+            <h3>Selecione o arquivo de banco de dados</h3>
+        </div>
+        
+        <div class="alert-box mt-3">
+            <i class="fas fa-info-circle info-icon"></i>
+            <strong>Informação:</strong> Esta ferramenta permite migrar dados de um banco SQLite antigo para o banco atual. 
+            Selecione um arquivo .db válido para começar. Apenas usuários administradores podem realizar esta operação.
+        </div>
+        
+        <form action="{{ url_for('migration.upload_database') }}" method="POST" enctype="multipart/form-data" class="mt-4">
+            <div class="form-group">
+                <label for="db_file"><i class="fas fa-file-upload"></i> Arquivo de Banco de Dados (.db)</label>
+                <input type="file" class="form-control-file" id="db_file" name="db_file" accept=".db" required>
+                <small class="form-text text-muted">Selecione apenas arquivos SQLite (.db)</small>
+            </div>
+            
+            <div class="mt-4 text-center">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-upload"></i> Enviar e Analisar
+                </button>
+                <a href="{{ url_for('main_menu') }}" class="btn btn-secondary ml-2">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="mt-4 text-center">
+        <div class="alert alert-warning" role="alert">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Aviso:</strong> A migração de dados é uma operação sensível. Certifique-se de ter um backup do banco de dados atual antes de prosseguir.
+        </div>
+    </div>
+</div>
+{% endblock %} 

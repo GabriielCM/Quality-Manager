@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Resultados da Migração{% endblock %}
+
+{% block styles %}
+<style>
+    .results-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .results-card {
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    
+    .table-success-header {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .table-error-header {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .migration-icon {
+        font-size: 4rem;
+        color: #28a745;
+        margin-bottom: 20px;
+    }
+    
+    .progress {
+        height: 25px;
+    }
+    
+    .progress-bar {
+        font-size: 14px;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="results-container">
+        <div class="text-center mb-5">
+            <i class="fas fa-check-circle migration-icon"></i>
+            <h1 class="mb-3">Migração Concluída</h1>
+            <p class="lead">Os dados foram migrados para o banco de dados atual.</p>
+        </div>
+        
+        <div class="card results-card">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0"><i class="fas fa-clipboard-list mr-2"></i>Resumo da Migração</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Tabela</th>
+                                <th>Total de Registros</th>
+                                <th>Registros Migrados</th>
+                                <th>Erros</th>
+                                <th>Progresso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for table_name, table_results in results.items() %}
+                            <tr>
+                                <td><strong>{{ table_name }}</strong></td>
+                                
+                                {% if 'error' in table_results %}
+                                <td colspan="4" class="text-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> Erro: {{ table_results.error }}
+                                </td>
+                                {% else %}
+                                <td>{{ table_results.total }}</td>
+                                <td>{{ table_results.migrated }}</td>
+                                <td>{{ table_results.errors }}</td>
+                                <td>
+                                    {% set success_percent = (table_results.migrated / table_results.total * 100) if table_results.total > 0 else 0 %}
+                                    {% set error_percent = (table_results.errors / table_results.total * 100) if table_results.total > 0 else 0 %}
+                                    
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" role="progressbar" 
+                                             style="width: {{ success_percent }}%" 
+                                             aria-valuenow="{{ success_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                            {{ success_percent|int }}%
+                                        </div>
+                                        {% if error_percent > 0 %}
+                                        <div class="progress-bar bg-danger" role="progressbar" 
+                                             style="width: {{ error_percent }}%" 
+                                             aria-valuenow="{{ error_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                            {{ error_percent|int }}%
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Informação:</strong> Um registro detalhado desta migração foi salvo no log de atividades do sistema.
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="{{ url_for('main_menu') }}" class="btn btn-primary">
+                <i class="fas fa-home"></i> Voltar para o Menu Principal
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Script para a página de resultados
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Página de resultados carregada');
+    });
+</script>
+{% endblock %} 

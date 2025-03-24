@@ -25,6 +25,7 @@ import inspecao_routes
 import faturamento_routes
 import log_routes
 import api_routes
+import db_migration
 
 # Inicializar o aplicativo
 app = Flask(__name__)
@@ -101,6 +102,7 @@ app.register_blueprint(inspecao_routes.inspecao_bp)
 app.register_blueprint(faturamento_routes.faturamento_bp)
 app.register_blueprint(log_routes.log_bp)
 app.register_blueprint(api_routes.api_bp)
+app.register_blueprint(db_migration.migration_bp)
 
 # Loader de usuário para Flask-Login
 @login_manager.user_loader
