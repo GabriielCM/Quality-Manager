@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import login_required, current_user
-from models import db, RotinaInspecao, InspectionPlan, InspectionActivity, ActivityDenomination, InspectionMethod, INC
+from models import db, RotinaInspecao, InspectionPlan, InspectionActivity, ActivityDenomination, InspectionMethod, INC, Notification, User
 from utils import log_user_activity, ler_arquivo_lst
 from werkzeug.utils import secure_filename
 import os
@@ -338,6 +338,63 @@ def salvar_rotina_inspecao():
             "adiados_count": adiados
         }
     )
+    
+    # Criar notificações para informar sobre a conclusão da rotina de inspeção
+    
+    # Determinar itens inspecionados para incluir na notificação
+    itens_inspecionados = [r.get('item', 'N/A') for r in registros if r.get('inspecionado', False)]
+    itens_str = ", ".join(itens_inspecionados[:3])
+    if len(itens_inspecionados) > 3:
+        itens_str += f" e mais {len(itens_inspecionados) - 3} itens"
+    
+    # Criar notificação para o próprio inspetor
+    notificacao_inspetor = Notification(
+        user_id=current_user.id,
+        title='Rotina de inspeção concluída',
+        message=f'Você concluiu uma rotina de inspeção com {inspecionados} itens inspecionados e {adiados} adiados.',
+        category='success',
+        entity_type='inspecao',
+        entity_id=rotina.id,
+        action_text='Visualizar Rotinas'
+    )
+    db.session.add(notificacao_inspetor)
+    
+    # Criar notificações para administradores
+    administradores = User.query.filter_by(is_admin=True).all()
+    for admin in administradores:
+        if admin.id != current_user.id:  # Evitar duplicidade
+            notificacao_admin = Notification(
+                user_id=admin.id,
+                title='Nova rotina de inspeção concluída',
+                message=f'{current_user.username} concluiu uma inspeção com {len(registros)} itens ({itens_str}).',
+                category='update',
+                entity_type='inspecao',
+                entity_id=rotina.id,
+                action_text='Visualizar Rotinas'
+            )
+            db.session.add(notificacao_admin)
+    
+    # Encontrar usuários com permissão para rotina de inspeção
+    usuarios_com_permissao = User.query.filter(
+        User.id != current_user.id,  # Excluir o próprio inspetor
+        User.is_admin == False,       # Excluir administradores (já notificados acima)
+        User.active == True           # Apenas usuários ativos
+    ).all()
+    
+    for usuario in usuarios_com_permissao:
+        if usuario.has_permission('rotina_inspecao'):
+            notificacao_usuario = Notification(
+                user_id=usuario.id,
+                title='Nova rotina de inspeção disponível',
+                message=f'Uma nova rotina de inspeção foi concluída por {current_user.username}.',
+                category='message',
+                entity_type='inspecao',
+                entity_id=rotina.id,
+                action_text='Visualizar Detalhes'
+            )
+            db.session.add(notificacao_usuario)
+    
+    db.session.commit()
     
     flash('Rotina de inspeção salva com sucesso!', 'success')
     session.pop('inspecao_registros', None)

@@ -19,7 +19,7 @@ def login():
         password = request.form['password']
         user = User.query.filter_by(username=username).first()
         
-        if user and check_password_hash(user.password, password):
+        if user and user.verify_password(password):
             login_user(user)
             
             # Registrar login do usuário
@@ -302,77 +302,57 @@ def cadastrar_usuario():
 @auth_bp.route('/perfil', methods=['GET', 'POST'])
 @login_required
 def perfil():
-    user = current_user
-    
     if request.method == 'POST':
-        # Apenas permitir a atualização de senha
-        current_password = request.form.get('current_password')
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-        
-        # Validações
-        if not current_password or not new_password or not confirm_password:
-            flash('Todos os campos são obrigatórios.', 'danger')
-            return redirect(url_for('auth.perfil'))
-        
-        # Verificar senha atual
-        if not check_password_hash(user.password, current_password):
-            flash('Senha atual incorreta.', 'danger')
+        # Verificar qual formulário foi enviado
+        if 'update_info' in request.form:
+            # Atualização de informações gerais
+            email = request.form.get('email')
             
-            # Registrar tentativa de alteração de senha malsucedida
+            # Atualizar informações gerais
+            current_user.email = email
+            db.session.commit()
+            
+            flash('Informações atualizadas com sucesso!', 'success')
+            
+            # Registrar atividade
             log_user_activity(
-                user_id=user.id,
-                action="password_change_failed",
+                user_id=current_user.id,
+                action="update",
                 entity_type="user",
-                entity_id=user.id,
-                details={"reason": "incorrect_current_password"}
+                entity_id=current_user.id,
+                details={"fields": ["email"]}
             )
             
-            return redirect(url_for('auth.perfil'))
-        
-        # Verificar se as senhas coincidem
-        if new_password != confirm_password:
-            flash('As senhas não coincidem.', 'danger')
-            return redirect(url_for('auth.perfil'))
-        
-        # Verificar comprimento mínimo da senha
-        if len(new_password) < 6:
-            flash('A nova senha deve ter pelo menos 6 caracteres.', 'danger')
-            return redirect(url_for('auth.perfil'))
-        
-        # Atualizar senha
-        user.password = generate_password_hash(new_password)
-        db.session.commit()
-        
-        # Registrar alteração de senha
-        log_user_activity(
-            user_id=user.id,
-            action="password_change",
-            entity_type="user",
-            entity_id=user.id,
-            details={"self_initiated": True}
-        )
-        
-        flash('Senha atualizada com sucesso!', 'success')
-        return redirect(url_for('auth.perfil'))
+        elif 'change_password' in request.form:
+            # Alteração de senha
+            current_password = request.form.get('current_password')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+            
+            # Validações
+            if not current_password or not new_password or not confirm_password:
+                flash('Todos os campos de senha são obrigatórios.', 'danger')
+            elif new_password != confirm_password:
+                flash('A nova senha e a confirmação não coincidem.', 'danger')
+            elif not current_user.verify_password(current_password):
+                flash('Senha atual incorreta.', 'danger')
+            else:
+                # Atualizar senha
+                current_user.password = new_password  # Este é o setter que aplica o hash
+                db.session.commit()
+                
+                flash('Senha alterada com sucesso!', 'success')
+                
+                # Registrar atividade
+                log_user_activity(
+                    user_id=current_user.id,
+                    action="update",
+                    entity_type="user",
+                    entity_id=current_user.id,
+                    details={"fields": ["password"]}
+                )
     
-    # Converter permissões de JSON para dicionário Python
-    try:
-        user_permissions = json.loads(user.permissions) if user.permissions else {}
-    except:
-        user_permissions = {}
-    
-    # Preparar lista de funções do sistema para exibir as permissões
-    system_functions = [
-        {'id': 'cadastro_inc', 'name': 'Cadastrar INC'},
-        {'id': 'visualizar_incs', 'name': 'Visualizar INCs'},
-        {'id': 'rotina_inspecao', 'name': 'Rotina de Inspeção'},
-        {'id': 'prateleira', 'name': 'Prateleira Não Conforme'},
-        {'id': 'fornecedores', 'name': 'Monitorar Fornecedores'},
-        {'id': 'faturamento', 'name': 'Solicitação de Faturamento'},
-    ]
-    
-    return render_template('perfil.html', user=user, permissions=user_permissions, system_functions=system_functions)
+    return render_template('perfil.html', user=current_user)
 
 @auth_bp.route('/editar_layout', methods=['GET', 'POST'])
 @login_required

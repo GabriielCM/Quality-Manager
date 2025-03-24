@@ -375,387 +375,934 @@ function validateDateRange(startEl, endEl) {
 // ===== SISTEMA DE NOTIFICAÇÕES =====
 
 /**
- * Classe para gerenciar o sistema de notificações
+ * Sistema de Notificações
+ * @class NotificationSystem
+ * @description Gerencia as notificações do sistema
  */
 class NotificationSystem {
     constructor() {
-        this.container = document.getElementById('notification-center');
-        this.button = document.getElementById('notificationButton');
+        this.initialized = false;
+        
+        // Elementos de UI
+        this.bell = document.querySelector('.notification-bell');
+        this.container = document.querySelector('.notification-center');
         this.badge = document.querySelector('.notification-badge');
         this.list = document.querySelector('.notification-list');
-        this.markAllReadButton = document.getElementById('mark-all-read');
-        this.notifications = [];
         
-        this.init();
+        // Verificar elementos necessários
+        if (!this.bell) {
+            console.error('NotificationSystem: Bell não encontrado!');
+            return;
+        }
+        
+        if (!this.container) {
+            console.error('NotificationSystem: Container não encontrado!');
+            return;
+        }
+        
+        if (!this.list) {
+            console.error('NotificationSystem: Lista não encontrada!');
+            return;
+        }
+        
+        // Estado
+        this.notifications = [];
+        this.lastCheck = 0;
+        this.checkInterval = 10000; // 10 segundos
+        this.previousCount = 0; // Armazena contagem anterior para identificar novas notificações
+        this.soundEnabled = localStorage.getItem('notification_sound_enabled') !== 'false';
+        this.initialLoad = true; // Flag para identificar o carregamento inicial da página
+        this.notificationIds = new Set(); // Armazena IDs de notificações já carregadas
+        
+        // Inicializar o som de notificação (com fallback se o arquivo não existir)
+        try {
+            this.notificationSound = new Audio('/static/sounds/notification.mp3');
+            
+            // Adicionar tratamento de erro para caso o arquivo não exista
+            this.notificationSound.onerror = () => {
+                console.warn('Arquivo de som de notificação não encontrado. Usando fallback.');
+                // Criar um som de beep usando o AudioContext API
+                this.createFallbackSound();
+            };
+            
+            // Pré-carregar o som
+            this.notificationSound.load();
+        } catch (e) {
+            console.warn('Erro ao inicializar som de notificação:', e);
+            this.createFallbackSound();
+        }
+        
+        this.mockNotifications = [
+            { 
+                id: 1, 
+                title: 'Novo chamado', 
+                message: 'Um novo chamado foi aberto: #12345', 
+                timestamp: new Date(Date.now() - 5 * 60000), 
+                read: false, 
+                category: 'task',
+                actionUrl: '/inc/detalhes_inc/12345',
+                actionText: 'Visualizar chamado'
+            },
+            { 
+                id: 2, 
+                title: 'Atualização do sistema', 
+                message: 'O sistema foi atualizado para a versão 2.0', 
+                timestamp: new Date(Date.now() - 60 * 60000), 
+                read: false, 
+                category: 'system',
+                actionUrl: '/changelog',
+                actionText: 'Ver novidades'
+            },
+            { 
+                id: 3, 
+                title: 'Lembrete', 
+                message: 'Reunião de equipe em 30 minutos', 
+                timestamp: new Date(Date.now() - 24 * 60 * 60000), 
+                read: true, 
+                category: 'reminder',
+                actionUrl: '/calendario',
+                actionText: 'Ver agenda'
+            }
+        ];
+        
+        console.log('NotificationSystem: Elementos encontrados com sucesso');
     }
     
+    /**
+     * Cria um som de fallback usando a Web Audio API
+     */
+    createFallbackSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const audioCtx = new AudioContext();
+                
+                // Armazena uma função que cria um beep simples
+                this.notificationSound = {
+                    play: () => {
+                        const oscillator = audioCtx.createOscillator();
+                        const gainNode = audioCtx.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioCtx.destination);
+                        
+                        oscillator.type = 'sine';
+                        oscillator.frequency.value = 880; // A5
+                        
+                        gainNode.gain.value = 0.1;
+                        
+                        oscillator.start();
+                        
+                        // Fade out
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                        
+                        // Parar depois de 0.5 segundos
+                        setTimeout(() => {
+                            oscillator.stop();
+                        }, 500);
+                        
+                        return Promise.resolve();
+                    }
+                };
+            } else {
+                console.warn('AudioContext não suportado neste navegador');
+                // Objeto vazio com método play que retorna uma Promise resolvida
+                this.notificationSound = { play: () => Promise.resolve() };
+            }
+        } catch (e) {
+            console.warn('Erro ao criar som de fallback:', e);
+            // Objeto vazio com método play que retorna uma Promise resolvida
+            this.notificationSound = { play: () => Promise.resolve() };
+        }
+    }
+    
+    /**
+     * Inicializa o sistema de notificações
+     */
     init() {
-        if (!this.container || !this.button) return;
+        if (this.initialized) {
+            console.warn('NotificationSystem já inicializado!');
+            return;
+        }
         
-        // Configurar evento de clique no botão de notificações
-        this.button.addEventListener('click', () => {
+        // Adicionar evento de clique no sino
+        this.bell.addEventListener('click', () => {
             this.toggleNotificationCenter();
+            console.log('Notificações toggles. Estado:', this.container.classList.contains('show'));
         });
         
-        // Configurar botão de marcar todas como lidas
-        if (this.markAllReadButton) {
-            this.markAllReadButton.addEventListener('click', () => {
+        // Fechar ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (this.container && 
+                this.container.classList.contains('show') && 
+                !this.container.contains(e.target) && 
+                e.target !== this.bell) {
+                this.container.classList.remove('show');
+            }
+        });
+        
+        // Botão "Marcar todas como lidas"
+        const markAllBtn = this.container.querySelector('.mark-all-read');
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', () => {
                 this.markAllAsRead();
             });
-        }
-        
-        // Iniciar verificação de notificações
-        this.checkNotifications();
-        setInterval(() => this.checkNotifications(), CONFIG.NOTIFICATION_CHECK);
-    }
-    
-    toggleNotificationCenter() {
-        this.container.classList.toggle('open');
-    }
-    
-    async checkNotifications() {
-        try {
-            // Na implementação real, isso faria uma chamada AJAX para o servidor
-            // Para fins de demonstração, usaremos notificações simuladas
-            this.mockNotifications();
-        } catch (error) {
-            console.error('Erro ao verificar notificações:', error);
-        }
-    }
-    
-    mockNotifications() {
-        // Adicionar algumas notificações de exemplo para demonstração
-        const today = new Date();
-        
-        // Limpar notificações existentes para demonstração
-        this.notifications = [];
-        
-        // Adicionar notificações de exemplo
-        this.addNotification({
-            id: 1,
-            type: 'warning',
-            title: 'INCs próximas ao vencimento',
-            message: 'Você tem 3 INCs que vencem em 2 dias',
-            time: today.toISOString(),
-            read: false,
-            link: '/expiracao_inc'
-        });
-        
-        this.addNotification({
-            id: 2,
-            type: 'info',
-            title: 'Nova rotina de inspeção',
-            message: 'Uma nova rotina de inspeção foi adicionada',
-            time: new Date(today.getTime() - 3600000).toISOString(), // 1 hora atrás
-            read: true,
-            link: '/rotina_inspecao'
-        });
-        
-        this.addNotification({
-            id: 3,
-            type: 'success',
-            title: 'INC #123 concluída',
-            message: 'A INC #123 foi marcada como concluída',
-            time: new Date(today.getTime() - 86400000).toISOString(), // 1 dia atrás
-            read: false,
-            link: '/detalhes_inc/123'
-        });
-    }
-    
-    addNotification(notification) {
-        // Verifica se a notificação já existe
-        const existingIndex = this.notifications.findIndex(n => n.id === notification.id);
-        if (existingIndex >= 0) {
-            this.notifications[existingIndex] = notification;
         } else {
-            this.notifications.push(notification);
+            console.warn('NotificationSystem: Botão "Marcar todas como lidas" não encontrado');
         }
         
-        // Atualiza a interface
-        this.render();
-    }
-    
-    markAsRead(id) {
-        const notification = this.notifications.find(n => n.id === id);
-        if (notification) {
-            notification.read = true;
-            
-            // Na implementação real, isso enviaria uma requisição para o servidor
-            // para marcar a notificação como lida no banco de dados
-            
-            this.render();
-        }
-    }
-    
-    markAllAsRead() {
-        this.notifications.forEach(notification => {
-            notification.read = true;
+        // Adicionar controle de som
+        const soundToggle = document.createElement('button');
+        soundToggle.className = 'btn btn-sm btn-outline-secondary ms-2';
+        soundToggle.innerHTML = `<i class="fas fa-${this.soundEnabled ? 'volume-up' : 'volume-mute'}"></i>`;
+        soundToggle.title = this.soundEnabled ? 'Desativar som' : 'Ativar som';
+        soundToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleSound();
+            soundToggle.innerHTML = `<i class="fas fa-${this.soundEnabled ? 'volume-up' : 'volume-mute'}"></i>`;
+            soundToggle.title = this.soundEnabled ? 'Desativar som' : 'Ativar som';
         });
         
-        // Na implementação real, isso enviaria uma requisição para o servidor
-        // para marcar todas as notificações como lidas no banco de dados
-        
-        this.render();
-    }
-    
-    render() {
-        // Atualizar contador de notificações não lidas
-        const unreadCount = this.notifications.filter(n => !n.read).length;
-        
-        if (this.badge) {
-            this.badge.textContent = unreadCount;
-            this.badge.style.display = unreadCount > 0 ? 'block' : 'none';
-        }
-        
-        // Atualizar lista de notificações
-        if (this.list) {
-            if (this.notifications.length === 0) {
-                this.list.innerHTML = '<div class="notification-empty">Sem notificações</div>';
-            } else {
-                this.list.innerHTML = this.notifications
-                    .sort((a, b) => new Date(b.time) - new Date(a.time)) // Ordenar por mais recente
-                    .map(notification => this.renderNotification(notification))
-                    .join('');
-                
-                // Adicionar event listeners nos itens
-                this.list.querySelectorAll('.notification-item').forEach(item => {
-                    const id = parseInt(item.dataset.id);
-                    
-                    // Marcar como lida ao clicar no botão de fechar
-                    item.querySelector('.notification-close')?.addEventListener('click', e => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.markAsRead(id);
-                    });
-                    
-                    // Navegar para o link ao clicar no item
-                    item.addEventListener('click', () => {
-                        const notification = this.notifications.find(n => n.id === id);
-                        if (notification && notification.link) {
-                            this.markAsRead(id);
-                            window.location.href = notification.link;
-                        }
-                    });
-                });
+        // Adicionar controle de som ao cabeçalho de notificações
+        const headerActions = this.container.querySelector('.notification-header-actions');
+        if (headerActions) {
+            headerActions.appendChild(soundToggle);
+        } else {
+            const header = this.container.querySelector('.notification-header');
+            if (header) {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'notification-header-actions';
+                actionsDiv.appendChild(soundToggle);
+                header.appendChild(actionsDiv);
             }
         }
+        
+        // Configurar filtros de notificação
+        this.setupFilters();
+        
+        // Verificar notificações imediatamente e depois periodicamente
+        this.checkNotifications();
+        setInterval(() => this.checkNotifications(), this.checkInterval);
+        
+        this.initialized = true;
+        console.log('NotificationSystem: Inicializado com sucesso ✅');
     }
     
-    renderNotification(notification) {
-        const date = new Date(notification.time);
-        const timeStr = date.toLocaleString();
+    /**
+     * Configura os filtros de notificação
+     */
+    setupFilters() {
+        // Recuperar filtro salvo
+        this.currentFilter = localStorage.getItem('notification_filter') || 'all';
         
-        return `
-            <div class="notification-item ${notification.read ? 'read' : 'unread'}" data-id="${notification.id}">
-                <div class="notification-icon">
-                    <i class="fas fa-${notification.type === 'warning' ? 'exclamation-triangle' : 
-                                      notification.type === 'success' ? 'check-circle' : 'info-circle'} 
-                             text-${notification.type}"></i>
-                </div>
-                <div class="notification-content">
-                    <div class="notification-title">${notification.title}</div>
-                    <div class="notification-message">${notification.message}</div>
-                    <div class="notification-time">${timeStr}</div>
-                </div>
-                <div class="notification-close">
-                    <i class="fas fa-times"></i>
-                </div>
-            </div>
-        `;
+        // Configurar botões de filtro
+        const filterButtons = this.container.querySelectorAll('.notification-filters button');
+        if (filterButtons.length) {
+            filterButtons.forEach(button => {
+                // Definir estado inicial
+                if (button.dataset.filter === this.currentFilter) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+                
+                // Adicionar eventos
+                button.addEventListener('click', () => {
+                    // Remover classe ativa de todos os botões
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // Adicionar classe ativa ao botão clicado
+                    button.classList.add('active');
+                    
+                    // Atualizar filtro atual
+                    this.currentFilter = button.dataset.filter;
+                    localStorage.setItem('notification_filter', this.currentFilter);
+                    
+                    // Renderizar novamente com o novo filtro
+                    this.render();
+                });
+            });
+        } else {
+            console.warn('NotificationSystem: Botões de filtro não encontrados');
+        }
+    }
+    
+    /**
+     * Alterna a visibilidade do centro de notificações
+     */
+    toggleNotificationCenter() {
+        if (!this.container) return;
+        
+        // Alternar entre exibir e ocultar
+        this.container.classList.toggle('show');
+        
+        // Manter compatibilidade com versões antigas
+        if (this.container.classList.contains('show')) {
+            this.container.classList.add('open');
+            // Se estiver abrindo, esconder badge
+            if (this.badge) {
+                this.badge.classList.add('d-none');
+            }
+            console.log('Centro de notificações aberto');
+        } else {
+            this.container.classList.remove('open');
+            console.log('Centro de notificações fechado');
+        }
+    }
+    
+    /**
+     * Ativa ou desativa o som das notificações
+     */
+    toggleSound() {
+        this.soundEnabled = !this.soundEnabled;
+        localStorage.setItem('notification_sound_enabled', this.soundEnabled);
+        
+        // Tocar um som para demonstrar
+        if (this.soundEnabled) {
+            this.notificationSound.volume = 0.5;
+            this.notificationSound.play().catch(err => console.warn('Erro ao tocar som:', err));
+        }
+        
+        console.log(`Som de notificações ${this.soundEnabled ? 'ativado' : 'desativado'}`);
+    }
+    
+    /**
+     * Reproduz o som de notificação
+     */
+    playNotificationSound() {
+        if (!this.soundEnabled) return;
+        
+        // Reproduz o som se estiver ativado
+        this.notificationSound.volume = 0.5;
+        this.notificationSound.play().catch(err => console.warn('Erro ao tocar som:', err));
+    }
+    
+    /**
+     * Anima o ícone de notificação para chamar atenção
+     */
+    animateNotificationIcon() {
+        if (!this.bell) return;
+        
+        // Adiciona classe para animação
+        this.bell.classList.add('shake-animation');
+        
+        // Remove a classe após a animação terminar
+        setTimeout(() => {
+            this.bell.classList.remove('shake-animation');
+        }, 1000);
+        
+        // Anima o badge também
+        if (this.badge) {
+            this.badge.classList.add('animate');
+            setTimeout(() => {
+                this.badge.classList.remove('animate');
+            }, 1000);
+        }
+    }
+    
+    /**
+     * Verifica novas notificações
+     */
+    async checkNotifications() {
+        const now = Date.now();
+        
+        // Evitar requisições muito frequentes
+        if (now - this.lastCheck < this.checkInterval) {
+            return;
+        }
+        
+        this.lastCheck = now;
+        
+        // Armazenar IDs das notificações atuais para comparação
+        const currentNotificationIds = new Set(this.notifications.map(n => n.id));
+        
+        try {
+            // Tentar buscar notificações da API
+            const response = await fetch('/api/notificacoes');
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Verificar se existem novas notificações comparando com as atuais
+                const newNotifications = data.filter(n => !this.notificationIds.has(n.id));
+                
+                // Atualizar notificações
+                this.notifications = data;
+                console.log('NotificationSystem: Notificações recebidas da API:', data.length);
+                
+                // Se não é a carga inicial e temos novas notificações
+                if (!this.initialLoad && newNotifications.length > 0) {
+                    // Reproduzir som
+                    this.playNotificationSound();
+                    
+                    // Animar ícone
+                    this.animateNotificationIcon();
+                    
+                    // Exibir notificação do sistema para a primeira notificação nova (mais recente)
+                    if (newNotifications.length > 0) {
+                        this.showSystemNotification(newNotifications[0]);
+                    }
+                }
+                
+                // Armazenar os IDs de notificações atuais
+                this.notificationIds = new Set(data.map(n => n.id));
+            } else {
+                // Em caso de erro, usar notificações de exemplo em ambiente de desenvolvimento
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    console.warn('NotificationSystem: Usando notificações de exemplo (desenvolvimento)');
+                    this.notifications = this.mockNotifications;
+                } else {
+                    console.error('NotificationSystem: Erro ao buscar notificações:', response.status);
+                }
+            }
+        } catch (error) {
+            // Em caso de erro, usar notificações de exemplo em ambiente de desenvolvimento
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.warn('NotificationSystem: Usando notificações de exemplo (desenvolvimento)');
+                this.notifications = this.mockNotifications;
+            } else {
+                console.error('NotificationSystem: Erro ao buscar notificações:', error);
+            }
+        }
+        
+        // Marcar que o carregamento inicial foi concluído
+        this.initialLoad = false;
+        
+        // Atualizar a interface
+        this.render();
+    }
+    
+    /**
+     * Exibe uma notificação do sistema (notificação nativa do navegador)
+     * @param {Object} notification - A notificação a ser exibida
+     */
+    showSystemNotification(notification) {
+        // Verificar se o navegador suporta notificações
+        if (!("Notification" in window)) {
+            return;
+        }
+        
+        // Verificar permissão
+        if (Notification.permission === "granted") {
+            if (notification) {
+                const systemNotification = new Notification("Q-Manager", {
+                    body: notification.message,
+                    icon: "/static/img/logo-icon.png"
+                });
+                
+                // Fechar após 5 segundos
+                setTimeout(() => systemNotification.close(), 5000);
+                
+                // Ao clicar, redirecionar para a ação se disponível
+                systemNotification.onclick = () => {
+                    window.focus();
+                    if (notification.actionUrl) {
+                        window.location.href = notification.actionUrl;
+                    } else {
+                        this.container.classList.add('show');
+                    }
+                };
+            }
+        }
+        // Se a permissão não foi decidida, solicitar
+        else if (Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
+    
+    /**
+     * Marca uma notificação como lida
+     * @param {number} id - ID da notificação
+     */
+    async markAsRead(id) {
+        try {
+            // Tentar marcar como lida na API
+            const response = await fetch('/api/notificacoes/marcar-lida', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id })
+            });
+            
+            if (!response.ok) {
+                console.error('NotificationSystem: Erro ao marcar notificação como lida:', response.status);
+            }
+        } catch (error) {
+            console.error('NotificationSystem: Erro ao marcar notificação como lida:', error);
+        }
+        
+        // Atualizar localmente
+        this.notifications = this.notifications.map(n => 
+            n.id === id ? { ...n, read: true } : n
+        );
+        
+        // Atualizar a interface
+        this.render();
+    }
+    
+    /**
+     * Marca todas as notificações como lidas
+     */
+    async markAllAsRead() {
+        try {
+            // Tentar marcar todas como lidas na API
+            const response = await fetch('/api/notificacoes/marcar-todas-lidas', {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                console.error('NotificationSystem: Erro ao marcar todas as notificações como lidas:', response.status);
+            }
+        } catch (error) {
+            console.error('NotificationSystem: Erro ao marcar todas as notificações como lidas:', error);
+        }
+        
+        // Atualizar localmente
+        this.notifications = this.notifications.map(n => ({ ...n, read: true }));
+        
+        // Atualizar a interface
+        this.render();
+    }
+    
+    /**
+     * Obtém o ícone correspondente à categoria da notificação
+     * @param {string} category - Categoria da notificação
+     * @returns {string} - Classe de ícone FontAwesome
+     */
+    getCategoryIcon(category) {
+        switch(category) {
+            case 'task':
+                return 'fa-tasks';
+            case 'system':
+                return 'fa-cog';
+            case 'alert':
+                return 'fa-exclamation-triangle';
+            case 'message':
+                return 'fa-comment';
+            case 'reminder':
+                return 'fa-clock';
+            case 'update':
+                return 'fa-sync';
+            default:
+                return 'fa-bell';
+        }
+    }
+    
+    /**
+     * Obtém a cor correspondente à categoria da notificação
+     * @param {string} category - Categoria da notificação
+     * @returns {string} - Nome da classe de cor
+     */
+    getCategoryColorClass(category) {
+        switch(category) {
+            case 'task':
+                return 'text-primary';
+            case 'system':
+                return 'text-info';
+            case 'alert':
+                return 'text-danger';
+            case 'message':
+                return 'text-success';
+            case 'reminder':
+                return 'text-warning';
+            case 'update':
+                return 'text-secondary';
+            default:
+                return 'text-dark';
+        }
+    }
+    
+    /**
+     * Atualiza a interface com as notificações atuais
+     */
+    render() {
+        if (!this.list || !this.badge) return;
+        
+        // Limpar lista
+        this.list.innerHTML = '';
+        
+        // Verificar se há notificações não lidas
+        const unreadCount = this.notifications.filter(n => !n.read).length;
+        
+        // Atualizar badge
+        if (unreadCount > 0) {
+            this.badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+            this.badge.classList.remove('d-none');
+        } else {
+            this.badge.classList.add('d-none');
+        }
+        
+        // Ordenar notificações (não lidas primeiro, depois por data)
+        const sortedNotifications = [...this.notifications].sort((a, b) => {
+            if (a.read !== b.read) return a.read ? 1 : -1;
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        });
+        
+        // Filtrar notificações conforme seleção
+        let filteredNotifications = sortedNotifications;
+        if (this.currentFilter === 'unread') {
+            filteredNotifications = sortedNotifications.filter(n => !n.read);
+        }
+        
+        // Adicionar notificações à lista
+        if (filteredNotifications.length === 0) {
+            const emptyItem = document.createElement('li');
+            emptyItem.className = 'notification-item empty';
+            emptyItem.textContent = this.currentFilter === 'unread' ? 
+                'Nenhuma notificação não lida.' : 
+                'Nenhuma notificação.';
+            this.list.appendChild(emptyItem);
+        } else {
+            filteredNotifications.forEach((notification, index) => {
+                const item = document.createElement('li');
+                item.className = `notification-item ${notification.read ? 'read' : 'unread'}`;
+                
+                // Adicionar animação para novas notificações (somente as mais recentes)
+                if (!notification.read && index < 3) {
+                    item.classList.add('animate-new');
+                    
+                    // Remover a classe de animação após a animação terminar
+                    setTimeout(() => {
+                        item.classList.remove('animate-new');
+                    }, 500 + (index * 200)); // Escalonar animações
+                }
+                
+                // Ícone de categoria
+                const icon = document.createElement('div');
+                icon.className = `notification-icon ${this.getCategoryColorClass(notification.category)}`;
+                const iconEl = document.createElement('i');
+                iconEl.className = `fas ${this.getCategoryIcon(notification.category)}`;
+                icon.appendChild(iconEl);
+                
+                const content = document.createElement('div');
+                content.className = 'notification-content';
+                
+                const title = document.createElement('div');
+                title.className = 'notification-title';
+                title.textContent = notification.title;
+                
+                const message = document.createElement('div');
+                message.className = 'notification-message';
+                message.textContent = notification.message;
+                
+                const time = document.createElement('div');
+                time.className = 'notification-time';
+                time.textContent = this.formatTimestamp(notification.timestamp);
+                
+                content.appendChild(title);
+                content.appendChild(message);
+                content.appendChild(time);
+                
+                // Área de ações
+                const actions = document.createElement('div');
+                actions.className = 'notification-actions';
+                
+                // Botão de marcar como lido se não estiver lido
+                if (!notification.read) {
+                    const markAsReadBtn = document.createElement('button');
+                    markAsReadBtn.className = 'btn btn-sm btn-outline-primary';
+                    markAsReadBtn.innerHTML = '<i class="fas fa-check"></i>';
+                    markAsReadBtn.title = 'Marcar como lida';
+                    markAsReadBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.markAsRead(notification.id);
+                    });
+                    actions.appendChild(markAsReadBtn);
+                }
+                
+                // Adicionar evento de clique conforme a ação disponível
+                if (notification.actionUrl) {
+                    // Se tem URL de ação, adiciona link para a URL
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', () => {
+                        // Marcar como lida antes de redirecionar
+                        if (!notification.read) {
+                            this.markAsRead(notification.id);
+                        }
+                        // Redirecionar para a URL da ação
+                        window.location.href = notification.actionUrl;
+                    });
+                    
+                    // Adicionar botão de ação se tiver texto de ação
+                    if (notification.actionText) {
+                        const actionBtn = document.createElement('a');
+                        actionBtn.href = notification.actionUrl;
+                        actionBtn.className = 'btn btn-sm btn-primary ms-2';
+                        actionBtn.innerHTML = `<i class="fas fa-arrow-right me-1"></i>${notification.actionText}`;
+                        actionBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            // Marcar como lida antes de seguir o link
+                            if (!notification.read) {
+                                this.markAsRead(notification.id);
+                            }
+                        });
+                        actions.appendChild(actionBtn);
+                    }
+                } else {
+                    // Se não tem URL de ação, apenas marca como lida ao clicar
+                    item.addEventListener('click', () => {
+                        if (!notification.read) {
+                            this.markAsRead(notification.id);
+                        }
+                    });
+                }
+                
+                item.appendChild(icon);
+                item.appendChild(content);
+                item.appendChild(actions);
+                
+                this.list.appendChild(item);
+            });
+        }
+    }
+    
+    /**
+     * Formata o timestamp para exibição
+     * @param {Date|string} timestamp - Data e hora da notificação 
+     * @returns {string} Tempo relativo formatado
+     */
+    formatTimestamp(timestamp) {
+        const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+        
+        if (diffSec < 60) {
+            return 'Agora mesmo';
+        } else if (diffMin < 60) {
+            return `${diffMin} minuto${diffMin > 1 ? 's' : ''} atrás`;
+        } else if (diffHour < 24) {
+            return `${diffHour} hora${diffHour > 1 ? 's' : ''} atrás`;
+        } else if (diffDay < 7) {
+            return `${diffDay} dia${diffDay > 1 ? 's' : ''} atrás`;
+        } else {
+            return date.toLocaleDateString('pt-BR');
+        }
     }
 }
 
 // ===== SISTEMA DE TEMAS =====
 
 /**
- * Classe para gerenciar o sistema de temas
+ * Sistema de Temas
+ * @class ThemeSystem
+ * @description Gerencia os temas do sistema, incluindo modo noturno e seleção de fontes
  */
 class ThemeSystem {
     constructor() {
-        this.toggleButton = document.getElementById('theme-toggle');
-        this.panel = document.querySelector('.theme-panel');
+        this.initialized = false;
+        
+        // Elementos de UI
+        this.themeButton = document.getElementById('theme-toggle');
+        this.themePanel = document.querySelector('.theme-panel');
         this.themeOptions = document.querySelectorAll('.theme-option');
         this.darkModeSwitch = document.getElementById('darkModeSwitch');
-        this.fontSelector = document.getElementById('fontSelector');
         this.nightModeButton = document.getElementById('toggleNightMode');
+        this.fontSelector = document.getElementById('fontSelector');
         
-        this.init();
+        // Verificar elementos necessários
+        if (!this.themeButton) {
+            console.error('Botão de tema não encontrado!');
+            return;
+        }
+        
+        if (!this.themePanel) {
+            console.error('Painel de tema não encontrado!');
+            return;
+        }
+        
+        console.log('ThemeSystem: Elementos encontrados com sucesso');
     }
     
+    /**
+     * Inicializa o sistema de temas
+     */
     init() {
+        if (this.initialized) {
+            console.warn('ThemeSystem já inicializado!');
+            return;
+        }
+        
         // Carregar tema salvo
         this.loadSavedTheme();
         
-        // Toggle do painel de temas
-        if (this.toggleButton && this.panel) {
-            this.toggleButton.addEventListener('click', () => {
-                this.panel.classList.toggle('open');
-            });
-            
-            // Fechar painel ao clicar fora
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.theme-selector') && this.panel.classList.contains('open')) {
-                    this.panel.classList.remove('open');
-                }
-            });
-        }
+        // Event listener para o botão de tema
+        this.themeButton.addEventListener('click', () => {
+            this.toggleThemePanel();
+        });
         
-        // Mudar tema
-        if (this.themeOptions) {
-            this.themeOptions.forEach(option => {
-                option.addEventListener('click', () => {
-                    const theme = option.dataset.theme;
-                    this.setTheme(theme);
-                    
-                    // Atualizar seleção visual
-                    this.themeOptions.forEach(op => op.classList.remove('active'));
-                    option.classList.add('active');
-                });
-            });
-        }
-        
-        // Toggle do modo escuro via switch
-        if (this.darkModeSwitch) {
-            this.darkModeSwitch.addEventListener('change', () => {
-                this.toggleDarkMode(this.darkModeSwitch.checked);
-            });
-        }
-        
-        // Toggle do modo escuro via botão no rodapé
-        if (this.nightModeButton) {
-            this.nightModeButton.addEventListener('click', () => {
-                const isDarkMode = document.body.classList.contains('night-mode');
-                this.toggleDarkMode(!isDarkMode);
-                
-                // Atualizar switch se existir
-                if (this.darkModeSwitch) {
-                    this.darkModeSwitch.checked = !isDarkMode;
-                }
-            });
-        }
-        
-        // Mudar fonte
-        if (this.fontSelector) {
-            this.fontSelector.addEventListener('change', () => {
-                this.setFont(this.fontSelector.value);
-            });
-        }
-    }
-    
-    loadSavedTheme() {
-        // Carregar tema do localStorage
-        const savedTheme = localStorage.getItem('theme') || 'default';
-        const isDarkMode = localStorage.getItem('nightMode') === 'true';
-        const savedFont = localStorage.getItem('font') || "'Segoe UI', sans-serif";
-        
-        // Aplicar tema
-        this.setTheme(savedTheme, false);
-        
-        // Marcar a opção ativa
-        if (this.themeOptions) {
-            this.themeOptions.forEach(option => {
-                if (option.dataset.theme === savedTheme) {
-                    option.classList.add('active');
-                }
-            });
-        }
-        
-        // Aplicar modo escuro
-        this.toggleDarkMode(isDarkMode, false);
-        
-        // Atualizar checkbox
-        if (this.darkModeSwitch) {
-            this.darkModeSwitch.checked = isDarkMode;
-        }
-        
-        // Aplicar fonte
-        this.setFont(savedFont, false);
-        if (this.fontSelector) {
-            this.fontSelector.value = savedFont;
-        }
-    }
-    
-    setTheme(theme, save = true) {
-        // Remove classes de tema anteriores
-        document.body.classList.forEach(cls => {
-            if (cls.startsWith('theme-')) {
-                document.body.classList.remove(cls);
+        // Fechar o painel de temas ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (this.themePanel && 
+                !this.themePanel.contains(e.target) && 
+                e.target !== this.themeButton && 
+                this.themePanel.classList.contains('show')) {
+                this.themePanel.classList.remove('show');
+                this.themeButton.setAttribute('aria-expanded', 'false');
+                console.log('Painel de temas fechado (clique fora)');
             }
         });
         
-        // Adiciona a nova classe de tema
-        document.body.classList.add(`theme-${theme}`);
+        // Event listeners para cada opção de tema
+        this.themeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const theme = option.getAttribute('data-theme');
+                this.applyTheme(theme);
+                
+                // Atualizar seleção visual
+                this.themeOptions.forEach(opt => {
+                    opt.setAttribute('aria-selected', 'false');
+                    opt.classList.remove('selected');
+                });
+                option.setAttribute('aria-selected', 'true');
+                option.classList.add('selected');
+                
+                console.log(`Tema alterado para: ${theme}`);
+                this.themePanel.classList.remove('show');
+                this.themeButton.setAttribute('aria-expanded', 'false');
+            });
+            
+            // Adicionar suporte para navegação por teclado
+            option.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    option.click();
+                }
+            });
+        });
         
-        // Aplicar variáveis CSS do tema
-        const themeColors = CONFIG.THEME_SETTINGS[theme] || CONFIG.THEME_SETTINGS.default;
-        for (const [key, value] of Object.entries(themeColors)) {
-            document.documentElement.style.setProperty(`--${key}-color`, value);
+        // Event listener para o dark mode switch
+        if (this.darkModeSwitch) {
+            this.darkModeSwitch.addEventListener('change', () => {
+                this.toggleDarkMode();
+                console.log(`Modo escuro: ${this.darkModeSwitch.checked ? 'ativado' : 'desativado'}`);
+            });
         }
         
-        // Salva a preferência
-        if (save) {
-            localStorage.setItem('theme', theme);
+        // Event listener para o botão de modo noturno
+        if (this.nightModeButton) {
+            this.nightModeButton.addEventListener('click', () => {
+                if (this.darkModeSwitch) {
+                    this.darkModeSwitch.checked = !this.darkModeSwitch.checked;
+                }
+                this.toggleDarkMode();
+                console.log(`Modo noturno alterado por botão`);
+            });
         }
+        
+        // Event listener para o seletor de fonte
+        if (this.fontSelector) {
+            this.fontSelector.addEventListener('change', () => {
+                const font = this.fontSelector.value;
+                document.documentElement.style.setProperty('--font-family', font);
+                localStorage.setItem('fontFamily', font);
+                console.log(`Fonte alterada para: ${font}`);
+            });
+            
+            // Carregar fonte salva
+            const savedFont = localStorage.getItem('fontFamily');
+            if (savedFont) {
+                this.fontSelector.value = savedFont;
+                document.documentElement.style.setProperty('--font-family', savedFont);
+            }
+        }
+        
+        // Marcar como inicializado
+        this.initialized = true;
+        console.log('ThemeSystem: Inicializado com sucesso ✅');
     }
     
-    toggleDarkMode(enable, save = true) {
-        if (enable) {
-            document.body.classList.add('night-mode');
-            
-            // Atualizar ícone no botão de toggle
-            if (this.nightModeButton) {
-                const icon = this.nightModeButton.querySelector('i');
-                if (icon) {
-                    icon.className = 'fas fa-sun';
-                }
-                
-                // Atualizar estilo do botão
-                this.nightModeButton.classList.remove('btn-outline-light');
-                this.nightModeButton.classList.add('btn-outline-warning');
-            }
-            
-            // Atualizar estilo do rodapé
-            const footer = document.querySelector('.footer');
-            if (footer) {
-                footer.style.backgroundColor = '#1a2530';
-            }
+    /**
+     * Alterna a visibilidade do painel de temas
+     */
+    toggleThemePanel() {
+        if (!this.themePanel) return;
+        
+        // Alternar entre exibir e ocultar
+        const isExpanded = this.themePanel.classList.contains('show');
+        
+        if (isExpanded) {
+            this.themePanel.classList.remove('show');
+            this.themePanel.classList.remove('open'); // Compatibilidade com versões antigas
+            this.themeButton.setAttribute('aria-expanded', 'false');
+            console.log('Painel de temas fechado');
         } else {
-            document.body.classList.remove('night-mode');
-            
-            // Atualizar ícone no botão de toggle
-            if (this.nightModeButton) {
-                const icon = this.nightModeButton.querySelector('i');
-                if (icon) {
-                    icon.className = 'fas fa-moon';
-                }
-                
-                // Atualizar estilo do botão
-                this.nightModeButton.classList.remove('btn-outline-warning');
-                this.nightModeButton.classList.add('btn-outline-light');
-            }
-            
-            // Atualizar estilo do rodapé
-            const footer = document.querySelector('.footer');
-            if (footer) {
-                footer.style.backgroundColor = '';
-            }
+            this.themePanel.classList.add('show');
+            this.themePanel.classList.add('open'); // Compatibilidade com versões antigas
+            this.themeButton.setAttribute('aria-expanded', 'true');
+            console.log('Painel de temas aberto');
         }
-        
-        // Salvar preferência
-        if (save) {
-            localStorage.setItem('nightMode', enable);
-        }
-        
-        // Disparar evento personalizado para que os gráficos possam atualizar
-        const event = new CustomEvent('themeChanged', { detail: { darkMode: enable } });
-        document.dispatchEvent(event);
     }
     
-    setFont(fontFamily, save = true) {
-        document.documentElement.style.setProperty('--font-family', fontFamily);
+    /**
+     * Aplica o tema selecionado
+     * @param {string} theme - Nome do tema a ser aplicado
+     */
+    applyTheme(theme) {
+        document.body.className = document.body.className.replace(/theme-\w+/, '');
+        document.body.classList.add(`theme-${theme}`);
+        localStorage.setItem('theme', theme);
         
-        if (save) {
-            localStorage.setItem('font', fontFamily);
+        // Se estivermos no modo escuro, reaplique-o
+        if (localStorage.getItem('nightMode') === 'true') {
+            document.body.classList.add('dark-mode');
+        }
+    }
+    
+    /**
+     * Carrega o tema salvo no localStorage
+     */
+    loadSavedTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'default';
+        this.applyTheme(savedTheme);
+        
+        // Selecionar visualmente a opção do tema
+        this.themeOptions.forEach(option => {
+            const optionTheme = option.getAttribute('data-theme');
+            if (optionTheme === savedTheme) {
+                option.setAttribute('aria-selected', 'true');
+                option.classList.add('selected');
+            } else {
+                option.setAttribute('aria-selected', 'false');
+                option.classList.remove('selected');
+            }
+        });
+        
+        // Carregar modo noturno
+        const nightMode = localStorage.getItem('nightMode') === 'true';
+        if (this.darkModeSwitch) {
+            this.darkModeSwitch.checked = nightMode;
+        }
+        
+        if (nightMode) {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    }
+    
+    /**
+     * Alterna entre modo claro e escuro
+     */
+    toggleDarkMode() {
+        const isDarkMode = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('nightMode', isDarkMode);
+        
+        // Atualizar ícone do botão de modo noturno
+        if (this.nightModeButton) {
+            const iconElement = this.nightModeButton.querySelector('i');
+            if (iconElement) {
+                if (isDarkMode) {
+                    iconElement.classList.remove('fa-moon');
+                    iconElement.classList.add('fa-sun');
+                } else {
+                    iconElement.classList.remove('fa-sun');
+                    iconElement.classList.add('fa-moon');
+                }
+            }
         }
     }
 }
@@ -1165,129 +1712,260 @@ function updateChartsTheme(isDarkMode) {
     if (typeof Chart === 'undefined') return;
     
     // Configurações globais para Chart.js
-    Chart.defaults.color = isDarkMode ? '#ecf0f1' : '#666';
-    Chart.defaults.borderColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    Chart.defaults.color = isDarkMode ? '#f8f9fa' : '#666';
+    Chart.defaults.borderColor = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
+    
+    // Cores para os gráficos com melhor contraste
+    const darkModeColors = [
+        'rgba(26, 188, 156, 0.8)',    // Esmeralda forte
+        'rgba(46, 204, 113, 0.8)',    // Verde mais visível
+        'rgba(52, 152, 219, 0.8)',    // Azul mais visível
+        'rgba(155, 89, 182, 0.8)',    // Roxo mais visível
+        'rgba(241, 196, 15, 0.8)',    // Amarelo claro
+        'rgba(230, 126, 34, 0.8)'     // Laranja mais visível
+    ];
+    
+    const lightModeColors = [
+        'rgba(26, 188, 156, 0.7)',    // Esmeralda
+        'rgba(46, 204, 113, 0.7)',    // Verde
+        'rgba(52, 152, 219, 0.7)',    // Azul
+        'rgba(155, 89, 182, 0.7)',    // Roxo
+        'rgba(241, 196, 15, 0.7)',    // Amarelo
+        'rgba(230, 126, 34, 0.7)'     // Laranja
+    ];
     
     // Atualizar todos os gráficos na página
     Chart.instances.forEach(chart => {
+        // Aplicar cores apropriadas para o modo atual
+        const datasets = chart.config.data.datasets;
+        if (datasets && datasets.length > 0) {
+            datasets.forEach((dataset, index) => {
+                if (dataset.type === 'line') {
+                    dataset.borderColor = isDarkMode ? darkModeColors[index % darkModeColors.length] : lightModeColors[index % lightModeColors.length];
+                    dataset.pointBackgroundColor = dataset.borderColor;
+                } else {
+                    dataset.backgroundColor = isDarkMode ? darkModeColors[index % darkModeColors.length] : lightModeColors[index % lightModeColors.length];
+                }
+            });
+        }
+        
+        // Configurações de grade para melhor visibilidade
+        if (chart.config.options && chart.config.options.scales) {
+            const scales = chart.config.options.scales;
+            
+            if (scales.x) {
+                scales.x.grid = {
+                    color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                    drawBorder: true,
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'
+                };
+            }
+            
+            if (scales.y) {
+                scales.y.grid = {
+                    color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                    drawBorder: true,
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'
+                };
+            }
+        }
+        
         chart.update();
     });
 }
 
-// ===== INICIALIZAÇÃO QUANDO O DOCUMENTO ESTIVER PRONTO =====
+/**
+ * Função para diagnóstico de elementos do sistema de notificações
+ */
+function checkNotificationElements() {
+    console.log('==== DIAGNÓSTICO DE NOTIFICAÇÕES ====');
+    
+    const bell = document.querySelector('.notification-bell');
+    const container = document.querySelector('.notification-center');
+    const badge = document.querySelector('.notification-badge');
+    const list = document.querySelector('.notification-list');
+    const markAllBtn = document.querySelector('.mark-all-read');
+    
+    console.log('Bell:', bell ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    console.log('Container:', container ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    console.log('Badge:', badge ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    console.log('List:', list ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    console.log('Mark All Button:', markAllBtn ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    
+    if (bell) {
+        console.log('Bell classes:', bell.className);
+        console.log('Bell HTML:', bell.outerHTML);
+    }
+    
+    if (container) {
+        console.log('Container classes:', container.className);
+        console.log('Container é visível:', !container.classList.contains('d-none') && container.offsetParent !== null);
+    }
+    
+    return { bell, container, badge, list, markAllBtn };
+}
 
+/**
+ * Função para diagnóstico de elementos do sistema de temas
+ */
+function checkThemeElements() {
+    console.log('==== DIAGNÓSTICO DE TEMAS ====');
+    
+    const themeToggle = document.getElementById('theme-toggle');
+    const themePanel = document.querySelector('.theme-panel');
+    const themeOptions = document.querySelectorAll('.theme-option');
+    const darkModeSwitch = document.getElementById('darkModeSwitch');
+    const toggleNightMode = document.getElementById('toggleNightMode');
+    
+    console.log('Theme Toggle Button:', themeToggle ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    console.log('Theme Panel:', themePanel ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    console.log('Theme Options:', themeOptions.length > 0 ? `✅ Encontradas (${themeOptions.length})` : '❌ NÃO ENCONTRADAS');
+    console.log('Dark Mode Switch:', darkModeSwitch ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    console.log('Night Mode Toggle Button:', toggleNightMode ? '✅ Encontrado' : '❌ NÃO ENCONTRADO');
+    
+    if (themeToggle) {
+        console.log('Theme Toggle classes:', themeToggle.className);
+        console.log('Theme Toggle HTML:', themeToggle.outerHTML);
+    }
+    
+    if (themePanel) {
+        console.log('Theme Panel classes:', themePanel.className);
+        console.log('Theme Panel é visível:', !themePanel.classList.contains('d-none') && themePanel.offsetParent !== null);
+    }
+    
+    return { themeToggle, themePanel, themeOptions, darkModeSwitch, toggleNightMode };
+}
+
+/**
+ * Adiciona ou atualiza uma regra de estilo CSS dinamicamente
+ * @param {string} selector - seletor CSS
+ * @param {string} rules - regras de estilo
+ */
+function addOrUpdateCSSRule(selector, rules) {
+    // Verificar se já existe uma folha de estilo dinâmica
+    let styleSheet = document.getElementById('dynamic-styles');
+    
+    if (!styleSheet) {
+        // Criar uma nova folha de estilo se não existir
+        styleSheet = document.createElement('style');
+        styleSheet.id = 'dynamic-styles';
+        document.head.appendChild(styleSheet);
+    }
+    
+    // Verificar se a regra já existe
+    const existingRules = Array.from(styleSheet.sheet?.cssRules || []);
+    const existingRuleIndex = existingRules.findIndex(rule => 
+        rule.selectorText === selector
+    );
+    
+    if (existingRuleIndex >= 0) {
+        // Substituir a regra existente
+        styleSheet.sheet.deleteRule(existingRuleIndex);
+    }
+    
+    // Adicionar a nova regra
+    styleSheet.sheet.insertRule(`${selector} { ${rules} }`, 
+        styleSheet.sheet.cssRules.length);
+    
+    console.log(`CSS Rule ${existingRuleIndex >= 0 ? 'atualizada' : 'adicionada'}: ${selector}`);
+}
+
+/**
+ * Aplica correções CSS para compatibilidade com navegadores e melhorias de UI
+ */
+function applyCSSTweaks() {
+    console.log('Aplicando ajustes de CSS para melhorar compatibilidade...');
+    
+    // Corrigir problemas de z-index
+    addOrUpdateCSSRule('.theme-selector', 'z-index: 1060 !important;');
+    addOrUpdateCSSRule('.theme-panel', 'z-index: 1061 !important;');
+    addOrUpdateCSSRule('.notification-center', 'z-index: 1059 !important;');
+    
+    // Melhorar visibilidade no modo escuro
+    addOrUpdateCSSRule('.dark-mode .notification-item', 'background-color: #2c3e50 !important; color: #ecf0f1 !important;');
+    addOrUpdateCSSRule('.dark-mode .theme-panel', 'background-color: #2c3e50 !important; color: #ecf0f1 !important;');
+    
+    // Corrigir problema de tema-toggle
+    addOrUpdateCSSRule('.theme-toggle', 'display: flex !important; align-items: center !important; justify-content: center !important;');
+    
+    // Garantir que open e show são ambos suportados
+    addOrUpdateCSSRule('.theme-panel.open', 'display: block !important;');
+    addOrUpdateCSSRule('.theme-panel.show', 'display: block !important;');
+    addOrUpdateCSSRule('.notification-center.open', 'display: block !important;');
+    addOrUpdateCSSRule('.notification-center.show', 'display: block !important;');
+    
+    console.log('Ajustes de CSS aplicados com sucesso');
+}
+
+// Inicializar sistemas do Q-Manager
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar sistema de temas
-    const themeSystem = new ThemeSystem();
+    console.log('%c Q-Manager - Inicialização ', 'background: #3498db; color: white; padding: 5px; border-radius: 3px; font-weight: bold');
+    console.log('DOM carregado, inicializando sistemas...');
     
-    // Inicializar sistema de notificações
-    const notificationSystem = new NotificationSystem();
+    // Aplicar correções de CSS imediatamente
+    applyCSSTweaks();
     
-    // Toggle da sidebar
-    const sidebarCollapse = document.getElementById('sidebarCollapse');
-    if (sidebarCollapse) {
-        sidebarCollapse.addEventListener('click', toggleSidebar);
+    // Diagnóstico de elementos
+    setTimeout(checkThemeElements, 500);
+    setTimeout(checkNotificationElements, 500);
+    
+    // Sistema de Notificações
+    try {
+        const notificationSystem = new NotificationSystem();
+        notificationSystem.init();
+        window.notificationSystem = notificationSystem; // Para acesso no console para debug
+        console.log('Sistema de notificações inicializado ✅');
+    } catch (error) {
+        console.error('Erro ao inicializar sistema de notificações:', error);
     }
     
-    // Preencher todos os inputs de posição de rolagem com o valor atual
-    document.querySelectorAll('.scroll-position-input').forEach(input => {
-        input.value = window.scrollY || window.pageYOffset;
-    });
-    
-    // Restaurar a posição de rolagem em páginas relevantes
-    if (document.getElementById('stored_scroll_position')) {
-        restoreScrollPosition();
+    // Sistema de Temas
+    try {
+        const themeSystem = new ThemeSystem();
+        themeSystem.init();
+        window.themeSystem = themeSystem; // Para acesso no console para debug
+        console.log('Sistema de temas inicializado ✅');
+    } catch (error) {
+        console.error('Erro ao inicializar sistema de temas:', error);
     }
     
-    // Formatadores de dados
-    document.querySelectorAll('.format-date').forEach(function(element) {
-        const date = element.textContent.trim();
-        if (date) {
-            element.title = formatDate(date);
-        }
-    });
+    // Sistema de Tags
+    const tagSystem = new TagSystem();
     
-    // Inicializar tooltips Bootstrap, se disponível
-    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    }
-    
-    // Verificar botões de salvar para rotinas de inspeção
-    updateSaveButton();
-    
-    // Auto-esconder alertas após 5 segundos
-    document.querySelectorAll('.alert:not(.alert-permanent)').forEach(function(alert) {
-        setTimeout(function() {
-            const closeButton = alert.querySelector('.btn-close');
-            if (closeButton) {
-                closeButton.click();
-            }
-        }, CONFIG.TOAST_TIMEOUT);
-    });
-    
-    // Adicionar efeitos visuais
-    addHoverEffects();
-    
-    // Validação de campos de data
-    const startDateField = document.getElementById('start_date');
-    const endDateField = document.getElementById('end_date');
-    if (startDateField && endDateField) {
-        validateDateRange(startDateField, endDateField);
-    }
-    
-    // Destacar visualmente os status nas tabelas de inspeção
-    document.querySelectorAll('.status-cell').forEach(cell => {
-        const inspecionado = cell.getAttribute('data-inspecionado') === 'true';
-        const adiado = cell.getAttribute('data-adiado') === 'true';
-        
-        if (inspecionado) {
-            cell.parentElement.classList.add('table-success');
-        } else if (adiado) {
-            cell.parentElement.classList.add('table-warning');
-        }
-    });
-    
-    // Inicializar sistema de etiquetas
-    const tagContainer = document.querySelector('.tag-input-container');
-    if (tagContainer) {
-        const tagSystem = new TagSystem(tagContainer);
-    }
-    
-    // Inicializar sistema de kanban
-    const kanbanContainer = document.querySelector('.kanban-container');
-    if (kanbanContainer) {
+    // Gestor do Kanban
+    if (document.querySelector('.kanban-board')) {
         const kanbanManager = new KanbanManager();
     }
     
-    // Eventos para atualização de temas em gráficos
-    document.addEventListener('themeChanged', function(event) {
-        updateChartsTheme(event.detail.darkMode);
+    // Inicializar tooltips do Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
     });
     
-    // Verificar se o modo escuro está ativo e atualizar os gráficos
-    if (document.body.classList.contains('night-mode')) {
-        updateChartsTheme(true);
+    // Restaurar posição de scroll
+    const savedScrollPosition = localStorage.getItem('scrollPosition');
+    if (savedScrollPosition) {
+        window.scrollTo(0, parseInt(savedScrollPosition));
     }
     
-    // Ajustar padding do conteúdo em relação ao rodapé fixo
-    const footer = document.querySelector('.footer');
-    const contentBody = document.querySelector('.content-body');
-    if (footer && contentBody) {
-        contentBody.style.paddingBottom = (footer.offsetHeight + 20) + 'px';
-    }
+    // Salvar posição de scroll ao sair
+    window.addEventListener('beforeunload', function() {
+        localStorage.setItem('scrollPosition', window.scrollY);
+    });
     
-    // Detectar a orientação do dispositivo em celulares
-    function checkOrientation() {
-        if (window.innerWidth < 768 && window.innerHeight < window.innerWidth) {
-            showToast('Para uma melhor experiência, rotacione o dispositivo para o modo retrato.', 'info');
-        }
-    }
-    
-    // Verificar orientação quando a tela for redimensionada
-    window.addEventListener('resize', debounce(checkOrientation, 1000));
-    // Verificar orientação inicial
-    checkOrientation();
+    // Verificar o estado atual dos elementos após a inicialização completa
+    setTimeout(function() {
+        console.log('%c Diagnóstico final após inicialização ', 'background: #2ecc71; color: white; padding: 5px; border-radius: 3px; font-weight: bold');
+        checkThemeElements();
+        checkNotificationElements();
+        
+        // Verificar classes no body
+        console.log('Classes no body:', document.body.className);
+        
+        // Verificar localStorage
+        console.log('LocalStorage - theme:', localStorage.getItem('theme'));
+        console.log('LocalStorage - nightMode:', localStorage.getItem('nightMode'));
+        console.log('LocalStorage - fontFamily:', localStorage.getItem('fontFamily'));
+    }, 1000);
 });

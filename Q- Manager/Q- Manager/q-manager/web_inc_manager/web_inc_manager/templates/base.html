@@ -136,13 +136,9 @@
                     
                     <!-- Espaço para notificações, pesquisa, etc. -->
                     <div class="d-flex align-items-center">
-                        <div class="notification-bell me-3">
-                            <button class="btn btn-link position-relative" id="notificationButton">
-                                <i class="fas fa-bell text-light"></i>
-                                <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none;">
-                                    0
-                                </span>
-                            </button>
+                        <div class="notification-bell" aria-label="Notificações" tabindex="0" role="button">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge d-none">0</span>
                         </div>
                         
                         <!-- Dropdown do usuário atualizado -->
@@ -178,54 +174,65 @@
         </div>
     </div>
 
-    <!-- Centro de Notificações -->
-    <div id="notification-center" class="notification-center">
+    <!-- Centro de notificações -->
+    <div class="notification-center">
         <div class="notification-header">
-            <h5>Notificações</h5>
-            <button class="btn btn-sm btn-link" id="mark-all-read">Marcar todas como lidas</button>
+            <div class="notification-header-title">Notificações</div>
+            <div class="notification-header-actions">
+                <button class="mark-all-read btn btn-sm btn-outline-secondary" aria-label="Marcar todas como lidas">
+                    <i class="fas fa-check-double me-1"></i>Marcar todas
+                </button>
+                <!-- O botão de som será adicionado aqui via JavaScript -->
+            </div>
+        </div>
+        <div class="notification-filters">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Filtros de notificação">
+                <button type="button" class="btn btn-outline-secondary active" data-filter="all">Todas</button>
+                <button type="button" class="btn btn-outline-secondary" data-filter="unread">Não lidas</button>
+            </div>
         </div>
         <div class="notification-list">
-            <!-- As notificações serão carregadas dinamicamente via JavaScript -->
-            <div class="notification-empty">Sem notificações</div>
+            <!-- As notificações serão inseridas aqui dinamicamente via JavaScript -->
+            <div class="notification-empty">Não há notificações.</div>
         </div>
     </div>
 
     <!-- Seletor de Temas -->
-    <div class="theme-selector">
-        <button class="theme-toggle" id="theme-toggle">
-            <i class="fas fa-palette"></i>
+    <div class="theme-selector" aria-label="Configurações de tema">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Abrir painel de temas" title="Temas">
+            <i class="fas fa-palette" aria-hidden="true"></i>
         </button>
-        <div class="theme-panel">
-            <h6>Temas</h6>
-            <div class="theme-options">
-                <div class="theme-option" data-theme="default" title="Padrão">
+        <div class="theme-panel" role="dialog" aria-labelledby="theme-panel-title">
+            <h6 id="theme-panel-title">Temas</h6>
+            <div class="theme-options" role="radiogroup" aria-label="Selecione um tema">
+                <div class="theme-option" data-theme="default" title="Padrão" role="radio" tabindex="0" aria-checked="false">
                     <div class="theme-preview" style="background: linear-gradient(to right, #3498db, #2c3e50);"></div>
                     <span>Padrão</span>
                 </div>
-                <div class="theme-option" data-theme="emerald" title="Esmeralda">
+                <div class="theme-option" data-theme="emerald" title="Esmeralda" role="radio" tabindex="0" aria-checked="false">
                     <div class="theme-preview" style="background: linear-gradient(to right, #2ecc71, #27ae60);"></div>
                     <span>Esmeralda</span>
                 </div>
-                <div class="theme-option" data-theme="sunset" title="Por do Sol">
+                <div class="theme-option" data-theme="sunset" title="Por do Sol" role="radio" tabindex="0" aria-checked="false">
                     <div class="theme-preview" style="background: linear-gradient(to right, #f39c12, #e74c3c);"></div>
                     <span>Por do Sol</span>
                 </div>
-                <div class="theme-option" data-theme="lavender" title="Lavanda">
+                <div class="theme-option" data-theme="lavender" title="Lavanda" role="radio" tabindex="0" aria-checked="false">
                     <div class="theme-preview" style="background: linear-gradient(to right, #9b59b6, #8e44ad);"></div>
                     <span>Lavanda</span>
                 </div>
-                <div class="theme-option" data-theme="ocean" title="Oceano">
+                <div class="theme-option" data-theme="ocean" title="Oceano" role="radio" tabindex="0" aria-checked="false">
                     <div class="theme-preview" style="background: linear-gradient(to right, #1abc9c, #16a085);"></div>
                     <span>Oceano</span>
                 </div>
             </div>
-            <h6 class="mt-3">Modo</h6>
+            <h6 class="mt-3" id="dark-mode-label">Modo</h6>
             <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="darkModeSwitch">
-                <label class="form-check-label" for="darkModeSwitch">Modo Escuro</label>
+                <input class="form-check-input" type="checkbox" id="darkModeSwitch" role="switch" aria-labelledby="dark-mode-label dark-mode-description">
+                <label class="form-check-label" for="darkModeSwitch" id="dark-mode-description">Modo Escuro</label>
             </div>
-            <h6 class="mt-3">Fonte</h6>
-            <select class="form-select form-select-sm" id="fontSelector">
+            <h6 class="mt-3" id="font-selector-label">Fonte</h6>
+            <select class="form-select form-select-sm" id="fontSelector" aria-labelledby="font-selector-label">
                 <option value="'Segoe UI', sans-serif">Segoe UI</option>
                 <option value="'Roboto', sans-serif">Roboto</option>
                 <option value="'Open Sans', sans-serif">Open Sans</option>
@@ -245,11 +252,11 @@
                         <small>&copy; 2025 Q-Manager</small>
                     </div>
                     <div>
-                        <button id="toggleNightMode" class="btn btn-sm btn-outline-light me-2">
-                            <i class="fas fa-moon"></i> Modo Noturno
+                        <button id="toggleNightMode" class="btn btn-sm btn-outline-light me-2" aria-label="Alternar modo noturno" title="Modo Noturno">
+                            <i class="fas fa-moon" aria-hidden="true"></i> <span class="toggle-text">Modo Noturno</span>
                         </button>
-                        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-danger">
-                            <i class="fas fa-sign-out-alt"></i> Sair
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-danger" aria-label="Sair do sistema">
+                            <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Sair
                         </a>
                     </div>
                 </div>
@@ -258,14 +265,131 @@
     </footer>
     {% endif %}
 
-    <!-- Toast Container -->
-    <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
+    <!-- Script de diagnóstico para resolver problemas de tema -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Script de diagnóstico de tema carregado');
+            
+            // Verificar elementos críticos
+            const themeToggle = document.getElementById('theme-toggle');
+            const themePanel = document.querySelector('.theme-panel');
+            const themeOptions = document.querySelectorAll('.theme-option');
+            const darkModeSwitch = document.getElementById('darkModeSwitch');
+            const toggleNightMode = document.getElementById('toggleNightMode');
+            
+            console.log('==== DIAGNÓSTICO DE TEMAS ====');
+            console.log('Botão de tema (theme-toggle):', themeToggle ? 'Encontrado ✅' : 'NÃO ENCONTRADO ❌');
+            console.log('Painel de tema (.theme-panel):', themePanel ? 'Encontrado ✅' : 'NÃO ENCONTRADO ❌');
+            console.log('Opções de tema (.theme-option):', themeOptions.length > 0 ? `Encontradas: ${themeOptions.length} ✅` : 'NÃO ENCONTRADAS ❌');
+            console.log('Switch de modo escuro (darkModeSwitch):', darkModeSwitch ? 'Encontrado ✅' : 'NÃO ENCONTRADO ❌');
+            console.log('Botão de modo noturno (toggleNightMode):', toggleNightMode ? 'Encontrado ✅' : 'NÃO ENCONTRADO ❌');
+            
+            // Adicionar event listeners de diagnóstico
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function(e) {
+                    console.log('Clique no botão de tema detectado!');
+                    e.stopPropagation(); // Previne propagação do evento
+                    
+                    if (themePanel) {
+                        themePanel.classList.toggle('open');
+                        console.log('Estado do painel:', themePanel.classList.contains('open') ? 'Aberto' : 'Fechado');
+                    }
+                });
+            }
+            
+            if (toggleNightMode) {
+                toggleNightMode.addEventListener('click', function() {
+                    console.log('Clique no botão de modo noturno detectado!');
+                    const body = document.body;
+                    const isDarkMode = body.classList.contains('night-mode');
+                    
+                    console.log('Estado atual do modo noturno:', isDarkMode ? 'Ativado' : 'Desativado');
+                    
+                    if (isDarkMode) {
+                        body.classList.remove('night-mode');
+                        this.querySelector('i').className = 'fas fa-moon';
+                        this.classList.remove('btn-outline-warning');
+                        this.classList.add('btn-outline-light');
+                        console.log('Modo noturno desativado');
+                    } else {
+                        body.classList.add('night-mode');
+                        this.querySelector('i').className = 'fas fa-sun';
+                        this.classList.remove('btn-outline-light');
+                        this.classList.add('btn-outline-warning');
+                        console.log('Modo noturno ativado');
+                    }
+                    
+                    // Sincronizar com o switch
+                    if (darkModeSwitch) {
+                        darkModeSwitch.checked = !isDarkMode;
+                    }
+                    
+                    // Salvar preferência no localStorage
+                    localStorage.setItem('nightMode', !isDarkMode);
+                });
+            }
+            
+            if (darkModeSwitch) {
+                darkModeSwitch.addEventListener('change', function() {
+                    console.log('Alteração no switch de modo escuro!');
+                    const isChecked = this.checked;
+                    console.log('Switch está:', isChecked ? 'Marcado' : 'Desmarcado');
+                    
+                    const body = document.body;
+                    if (isChecked) {
+                        body.classList.add('night-mode');
+                        console.log('Modo noturno ativado pelo switch');
+                    } else {
+                        body.classList.remove('night-mode');
+                        console.log('Modo noturno desativado pelo switch');
+                    }
+                    
+                    // Sincronizar com o botão de modo noturno
+                    if (toggleNightMode) {
+                        const icon = toggleNightMode.querySelector('i');
+                        if (isChecked) {
+                            icon.className = 'fas fa-sun';
+                            toggleNightMode.classList.remove('btn-outline-light');
+                            toggleNightMode.classList.add('btn-outline-warning');
+                        } else {
+                            icon.className = 'fas fa-moon';
+                            toggleNightMode.classList.remove('btn-outline-warning');
+                            toggleNightMode.classList.add('btn-outline-light');
+                        }
+                    }
+                    
+                    // Salvar preferência
+                    localStorage.setItem('nightMode', isChecked);
+                });
+            }
+            
+            // Verificar o localStorage
+            console.log('localStorage - modo noturno:', localStorage.getItem('nightMode'));
+            console.log('localStorage - tema:', localStorage.getItem('theme'));
+            
+            // Aplicar estado salvo ao carregar
+            const savedNightMode = localStorage.getItem('nightMode') === 'true';
+            if (savedNightMode) {
+                document.body.classList.add('night-mode');
+                if (darkModeSwitch) darkModeSwitch.checked = true;
+                if (toggleNightMode) {
+                    const icon = toggleNightMode.querySelector('i');
+                    if (icon) icon.className = 'fas fa-sun';
+                    toggleNightMode.classList.remove('btn-outline-light');
+                    toggleNightMode.classList.add('btn-outline-warning');
+                }
+                console.log('Modo noturno aplicado do localStorage');
+            }
+        });
+    </script>
 
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Bootstrap JS Bundle -->
+    <!-- Bootstrap e outros scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Custom Scripts -->
+    <!-- Font Awesome para ícones -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- JavaScript Personalizado -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     
     <script>
@@ -282,24 +406,6 @@
             if (sidebarCollapse) {
                 sidebarCollapse.addEventListener('click', function() {
                     document.getElementById('sidebar').classList.toggle('active');
-                });
-            }
-            
-            // Toggle do centro de notificações
-            const notificationButton = document.getElementById('notificationButton');
-            const notificationCenter = document.getElementById('notification-center');
-            if (notificationButton && notificationCenter) {
-                notificationButton.addEventListener('click', function() {
-                    notificationCenter.classList.toggle('open');
-                });
-                
-                // Fechar o centro de notificações ao clicar fora
-                document.addEventListener('click', function(e) {
-                    if (!e.target.closest('#notification-center') && 
-                        !e.target.closest('#notificationButton') && 
-                        notificationCenter.classList.contains('open')) {
-                        notificationCenter.classList.remove('open');
-                    }
                 });
             }
             

@@ -12,7 +12,7 @@ from flask import (
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
-from models import db, User, INC, Fornecedor
+from models import db, User, INC, Fornecedor, Notification
 from utils import (
     validate_item_format, 
     save_file, 
@@ -352,6 +352,42 @@ def cadastro_inc():
                 "fotos_count": len(fotos)
             }
         )
+        
+        # Criar notificação para o representante
+        
+        # Determinar categoria baseado na urgência
+        category = 'task'
+        if urgencia.lower() == 'crítico':
+            category = 'alert'
+        
+        # Criar notificação para o representante
+        notification = Notification(
+            user_id=representante_id,
+            title=f'Nova INC para {item}',
+            message=f'Nova INC criada: {item} - {quantidade_com_defeito} itens com defeito - {fornecedor}',
+            category=category,
+            entity_type='inc',
+            entity_id=inc.id,
+            action_text='Visualizar INC'
+        )
+        
+        # Notificação para administradores
+        admins = User.query.filter_by(is_admin=True).all()
+        for admin in admins:
+            if admin.id != current_user.id and admin.id != representante_id:  # Evitar duplicatas
+                admin_notification = Notification(
+                    user_id=admin.id,
+                    title=f'Nova INC cadastrada: {item}',
+                    message=f'INC criada por {current_user.username} para {fornecedor} - {quantidade_com_defeito} itens com defeito',
+                    category=category,
+                    entity_type='inc',
+                    entity_id=inc.id,
+                    action_text='Visualizar INC'
+                )
+                db.session.add(admin_notification)
+        
+        db.session.add(notification)
+        db.session.commit()
         
         flash('INC cadastrada com sucesso!', 'success')
         return redirect(url_for('inc.visualizar_incs'))
