@@ -490,6 +490,10 @@ body {
     right: 0;
 }
 
+.notification-center.show {
+    right: 0;
+}
+
 .notification-header {
     display: flex;
     justify-content: space-between;
