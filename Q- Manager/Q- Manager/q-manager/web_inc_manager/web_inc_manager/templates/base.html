@@ -41,22 +41,28 @@
                 </li>
                 <li>
                     <a href="#incSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
-                        <i class="fas fa-file-alt me-2"></i>INC
+                        <i class="fas fa-clipboard-list me-2"></i>Gerenciar INCs
                     </a>
                     <ul class="collapse list-unstyled" id="incSubmenu">
-                        {% if current_user.is_admin or current_user.has_permission('inc.cadastro_inc') %}
                         <li>
                             <a href="{{ url_for('inc.cadastro_inc') }}">Cadastrar INC</a>
                         </li>
-                        {% endif %}
-                        {% if current_user.is_admin or current_user.has_permission('inc.visualizar_incs') %}
                         <li>
                             <a href="{{ url_for('inc.visualizar_incs') }}">Visualizar INCs</a>
                         </li>
                         <li>
-                            <a href="{{ url_for('inc.expiracao_inc') }}">INCs Vencidas</a>
+                            <a href="{{ url_for('inc.monitorar_fornecedores') }}">Monitorar Fornecedores</a>
                         </li>
-                        {% endif %}
+                    </ul>
+                </li>
+                <li>
+                    <a href="#rncSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                        <i class="fas fa-exclamation-triangle me-2"></i>RNCs
+                    </a>
+                    <ul class="collapse list-unstyled" id="rncSubmenu">
+                        <li>
+                            <a href="{{ url_for('rnc.listar_rncs') }}">Listar RNCs</a>
+                        </li>
                     </ul>
                 </li>
                 {% if current_user.is_admin or current_user.has_permission('rotina_inspecao') %}

@@ -5647,3 +5647,109 @@ ModuleNotFoundError: No module named 'web_inc_manager'
 2025-03-23 22:43:46,395 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:46] "GET /api/notificacoes HTTP/1.1" 200 -
 2025-03-23 22:43:56,394 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:43:56] "GET /api/notificacoes HTTP/1.1" 200 -
 2025-03-23 22:44:07,229 - INFO - _internal.py:224 - 127.0.0.1 - - [23/Mar/2025 22:44:07] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:45:58,886 - INFO - _internal.py:224 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.3:5000
+2025-03-24 21:45:58,886 - INFO - _internal.py:224 - [33mPress CTRL+C to quit[0m
+2025-03-24 21:45:58,888 - INFO - _internal.py:224 -  * Restarting with stat
+2025-03-24 21:46:00,419 - WARNING - _internal.py:224 -  * Debugger is active!
+2025-03-24 21:46:00,422 - INFO - _internal.py:224 -  * Debugger PIN: 121-841-542
+2025-03-24 21:46:01,908 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:01] "[32mGET / HTTP/1.1[0m" 302 -
+2025-03-24 21:46:01,994 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:01] "GET /auth/login HTTP/1.1" 200 -
+2025-03-24 21:46:02,155 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:02] "GET /static/css/style.css HTTP/1.1" 200 -
+2025-03-24 21:46:02,161 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:02] "GET /static/js/script.js HTTP/1.1" 200 -
+2025-03-24 21:46:02,167 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:02] "GET /static/js/login.js HTTP/1.1" 200 -
+2025-03-24 21:46:02,380 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:02] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-03-24 21:46:19,824 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:19] "[32mPOST /auth/login HTTP/1.1[0m" 302 -
+2025-03-24 21:46:19,912 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:19] "GET /main_menu HTTP/1.1" 200 -
+2025-03-24 21:46:19,932 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:19] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:46:19,932 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:19] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:46:20,057 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:20] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:20,107 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:20] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:46:30,056 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:30] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:37,417 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:37] "GET /fornecedor/gerenciar_fornecedores HTTP/1.1" 200 -
+2025-03-24 21:46:37,438 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:37] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:46:37,438 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:37] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:46:37,495 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:37] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:37,507 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:37] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:46:39,340 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:39] "GET /main_menu HTTP/1.1" 200 -
+2025-03-24 21:46:39,360 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:39] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:46:39,360 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:39] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:46:39,421 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:39] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:39,442 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:39] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:46:41,617 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:41] "GET /inc/monitorar_fornecedores HTTP/1.1" 200 -
+2025-03-24 21:46:41,637 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:41] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:46:41,637 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:41] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:46:41,687 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:41] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:41,691 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:41] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:46:49,421 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:49] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:49,740 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:49] "GET /inc/visualizar_incs HTTP/1.1" 200 -
+2025-03-24 21:46:49,753 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:49] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:46:49,753 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:49] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:46:49,812 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:49] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:49,830 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:49] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:46:51,698 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:51] "GET /inc/detalhes_inc/3 HTTP/1.1" 200 -
+2025-03-24 21:46:51,720 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:51] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:46:51,723 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:51] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:46:51,766 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:51] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:51,779 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:51] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:46:57,946 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:57] "GET /inc/visualizar_incs HTTP/1.1" 200 -
+2025-03-24 21:46:57,965 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:57] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:46:57,965 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:57] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:46:58,021 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:58] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:58,048 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:58] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:46:59,590 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:59] "GET /inc/cadastro_inc HTTP/1.1" 200 -
+2025-03-24 21:46:59,609 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:59] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:46:59,610 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:59] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:46:59,691 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:59] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:46:59,708 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:46:59] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:47:09,692 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:09] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:47:19,701 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:19] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:47:29,707 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:29] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:47:36,067 - INFO - utils.py:255 - Arquivo salvo com sucesso: c:\Users\gabri\Desktop\Q\Quality-Manager\Q- Manager\Q- Manager\q-manager\web_inc_manager\web_inc_manager\static/uploads\20250324214736_Gray_and_White_Elegant_Consultant_Rounded_Business_Card_Landscape.png
+2025-03-24 21:47:36,092 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:36] "[32mPOST /inc/cadastro_inc HTTP/1.1[0m" 302 -
+2025-03-24 21:47:36,111 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:36] "GET /inc/visualizar_incs HTTP/1.1" 200 -
+2025-03-24 21:47:36,130 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:36] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:47:36,130 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:36] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:47:36,176 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:36] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:47:41,183 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:41] "GET /inc/detalhes_inc/4 HTTP/1.1" 200 -
+2025-03-24 21:47:41,203 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:41] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:47:41,204 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:41] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:47:41,212 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:41] "GET /static/uploads/20250324214736_Gray_and_White_Elegant_Consultant_Rounded_Business_Card_Landscape.png HTTP/1.1" 200 -
+2025-03-24 21:47:41,250 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:41] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:47:46,098 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:46] "GET /rnc/criar/4 HTTP/1.1" 200 -
+2025-03-24 21:47:46,120 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:46] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:47:46,121 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:46] "[36mGET /static/uploads/20250324214736_Gray_and_White_Elegant_Consultant_Rounded_Business_Card_Landscape.png HTTP/1.1[0m" 304 -
+2025-03-24 21:47:46,122 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:46] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:47:46,171 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:46] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:47:56,183 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:47:56] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:48:16,185 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:48:16] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:48:26,179 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:48:26] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:48:46,933 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:48:46] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:49:06,934 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:06] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:49:16,952 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:16] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:49:35,763 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:35] "[32mPOST /rnc/criar/4 HTTP/1.1[0m" 302 -
+2025-03-24 21:49:35,793 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:35] "GET /rnc/visualizar/1 HTTP/1.1" 200 -
+2025-03-24 21:49:35,812 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:35] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-03-24 21:49:35,812 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:35] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:49:35,814 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:35] "[36mGET /static/uploads/20250324214736_Gray_and_White_Elegant_Consultant_Rounded_Business_Card_Landscape.png HTTP/1.1[0m" 304 -
+2025-03-24 21:49:35,856 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:35] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:49:35,860 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:35] "[35m[1mGET /static/sounds/notification.mp3 HTTP/1.1[0m" 206 -
+2025-03-24 21:49:45,269 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:45] "[35m[1mGET /rnc/responder/46ed5e8035405b286b7128e4c1148324962d6601eb359a1a8b0e65c02ad2d0d2 HTTP/1.1[0m" 500 -
+2025-03-24 21:49:45,305 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:45] "GET /rnc/responder/46ed5e8035405b286b7128e4c1148324962d6601eb359a1a8b0e65c02ad2d0d2?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2025-03-24 21:49:45,316 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:45] "GET /rnc/responder/46ed5e8035405b286b7128e4c1148324962d6601eb359a1a8b0e65c02ad2d0d2?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
+2025-03-24 21:49:45,329 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:45] "GET /rnc/responder/46ed5e8035405b286b7128e4c1148324962d6601eb359a1a8b0e65c02ad2d0d2?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2025-03-24 21:49:45,404 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:45] "[36mGET /rnc/responder/46ed5e8035405b286b7128e4c1148324962d6601eb359a1a8b0e65c02ad2d0d2?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-03-24 21:49:45,940 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:49:45] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:50:05,933 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:50:05] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:50:15,943 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:50:15] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:50:35,945 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:50:35] "GET /api/notificacoes HTTP/1.1" 200 -
+2025-03-24 21:50:44,075 - INFO - _internal.py:224 -  * Detected change in 'c:\\Users\\gabri\\Desktop\\Q\\Quality-Manager\\Q- Manager\\Q- Manager\\q-manager\\web_inc_manager\\web_inc_manager\\rnc_routes.py', reloading
+2025-03-24 21:50:44,280 - INFO - _internal.py:224 -  * Restarting with stat
+2025-03-24 21:50:45,840 - WARNING - _internal.py:224 -  * Debugger is active!
+2025-03-24 21:50:45,843 - INFO - _internal.py:224 -  * Debugger PIN: 121-841-542
+2025-03-24 21:51:23,936 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:51:23] "[32mGET /api/notificacoes HTTP/1.1[0m" 302 -
+2025-03-24 21:51:23,976 - INFO - _internal.py:224 - 127.0.0.1 - - [24/Mar/2025 21:51:23] "GET /auth/login?next=%2Fapi%2Fnotificacoes HTTP/1.1" 200 -
+2025-03-24 21:51:40,167 - INFO - _internal.py:224 -  * Detected change in 'c:\\Users\\gabri\\Desktop\\Q\\Quality-Manager\\Q- Manager\\Q- Manager\\q-manager\\web_inc_manager\\web_inc_manager\\app.py', reloading
+2025-03-24 21:51:40,383 - INFO - _internal.py:224 -  * Restarting with stat

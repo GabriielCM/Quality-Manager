@@ -485,3 +485,96 @@ class Notification(db.Model):
     
     def __repr__(self):
         return f'<Notification {self.id}: {self.title}>'
+
+class RegistroNaoConformidade(db.Model):
+    """Modelo para Registro de Não Conformidade Externa (RNC)"""
+    __tablename__ = 'registro_nao_conformidade'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    inc_id = db.Column(db.Integer, db.ForeignKey('inc.id'), nullable=False, index=True)
+    numero = db.Column(db.String(20), unique=True, nullable=False, index=True)  # Ex: 004/2025
+    fornecedor = db.Column(db.String(200), nullable=False)
+    descricao_nao_conformidade = db.Column(db.Text, nullable=False)
+    nf_ordem_compra = db.Column(db.String(50), nullable=False)
+    reincidencia = db.Column(db.Boolean, default=False, nullable=False)
+    data_emissao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_expiracao = db.Column(db.DateTime, nullable=False)
+    fotos = db.Column(db.Text)  # JSON string de caminhos de fotos
+    desenhos = db.Column(db.Text)  # JSON string de referências de desenhos
+    
+    # Token de acesso para o fornecedor (vai no link)
+    token_acesso = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    
+    # Resposta do fornecedor
+    causa_problema = db.Column(db.Text, nullable=True)
+    plano_contingencia = db.Column(db.Text, nullable=True)
+    acoes_propostas = db.Column(db.Text, nullable=True)
+    respondido_em = db.Column(db.DateTime, nullable=True)
+    
+    # Status e metadados
+    status = db.Column(db.String(20), default='Pendente', nullable=False)  # Pendente, Respondido, Avaliado, Encerrado
+    avaliacao = db.Column(db.Boolean, nullable=True)  # True = Aceito, False = Rejeitado, None = Não avaliado
+    comentario_avaliacao = db.Column(db.Text, nullable=True)
+    avaliado_em = db.Column(db.DateTime, nullable=True)
+    avaliado_por = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relacionamentos
+    inc = db.relationship('INC', backref=db.backref('registros_nc', lazy=True))
+    avaliador = db.relationship('User', backref=db.backref('avaliacoes_rnc', lazy=True))
+    
+    @property
+    def expirado(self):
+        """Verifica se o link de acesso do fornecedor expirou"""
+        return datetime.utcnow() > self.data_expiracao
+    
+    @property
+    def fotos_list(self):
+        """Retorna a lista de fotos como um array Python"""
+        if not self.fotos:
+            return []
+        try:
+            return json.loads(self.fotos)
+        except json.JSONDecodeError:
+            return []
+    
+    @fotos_list.setter
+    def fotos_list(self, value):
+        """Define a lista de fotos a partir de um array Python"""
+        if isinstance(value, list):
+            self.fotos = json.dumps(value)
+        else:
+            raise TypeError("O valor de fotos deve ser uma lista")
+    
+    @property
+    def desenhos_list(self):
+        """Retorna a lista de desenhos como um array Python"""
+        if not self.desenhos:
+            return []
+        try:
+            return json.loads(self.desenhos)
+        except json.JSONDecodeError:
+            return []
+    
+    @desenhos_list.setter
+    def desenhos_list(self, value):
+        """Define a lista de desenhos a partir de um array Python"""
+        if isinstance(value, list):
+            self.desenhos = json.dumps(value)
+        else:
+            raise TypeError("O valor de desenhos deve ser uma lista")
+    
+    def __repr__(self):
+        return f'<RegistroNaoConformidade {self.numero}: {self.status}>'
+
+class MigrationHistory(db.Model):
+    """Modelo para rastrear migrações aplicadas no banco de dados"""
+    __tablename__ = 'migration_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    migration_name = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    applied_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<MigrationHistory {self.migration_name} applied at {self.applied_at}>'

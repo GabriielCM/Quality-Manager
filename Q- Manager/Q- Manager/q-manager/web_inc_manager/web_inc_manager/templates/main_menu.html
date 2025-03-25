@@ -188,8 +188,242 @@
         </div>
     </div>
 
+    {# Nova linha para RNCs #}
     <div class="row">
-        <!-- NOVA SEÇÃO: Visualização e Busca de Fornecedores -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-exclamation-triangle me-1"></i> Últimas RNCs
+                    </h6>
+                    <a href="{{ url_for('rnc.listar_rncs') }}" class="btn btn-sm btn-primary">
+                        Ver Todas
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if ultimas_rncs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Fornecedor</th>
+                                    <th>Data Emissão</th>
+                                    <th>Reincidência</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rnc in ultimas_rncs %}
+                                <tr>
+                                    <td>{{ rnc.numero }}</td>
+                                    <td>{{ rnc.fornecedor }}</td>
+                                    <td>{{ rnc.data_emissao|date('%d/%m/%Y') }}</td>
+                                    <td>
+                                        {% if rnc.reincidencia %}
+                                            <span class="badge bg-danger">Sim</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Não</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rnc.status == 'Pendente' %}
+                                            <span class="badge bg-warning text-dark">{{ rnc.status }}</span>
+                                        {% elif rnc.status == 'Respondido' %}
+                                            <span class="badge bg-info">{{ rnc.status }}</span>
+                                        {% elif rnc.status == 'Avaliado' %}
+                                            <span class="badge bg-primary">{{ rnc.status }}</span>
+                                        {% elif rnc.status == 'Encerrado' %}
+                                            <span class="badge bg-success">{{ rnc.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ rnc.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('rnc.visualizar_rnc', rnc_id=rnc.id) }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-gray-300 mb-3"></i>
+                        <p>Nenhuma RNC registrada.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-pie me-1"></i> Status das RNCs
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if rncs_por_status %}
+                    <div class="mb-4">
+                        <h4 class="small font-weight-bold">Pendentes <span class="float-end">{{ rncs_por_status.get('Pendente', 0) }}</span></h4>
+                        <div class="progress mb-4">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (rncs_por_status.get('Pendente', 0) / total_rncs * 100)|round }}%"
+                                aria-valuenow="{{ rncs_por_status.get('Pendente', 0) }}" aria-valuemin="0" aria-valuemax="{{ total_rncs }}"></div>
+                        </div>
+                        
+                        <h4 class="small font-weight-bold">Respondidas <span class="float-end">{{ rncs_por_status.get('Respondido', 0) }}</span></h4>
+                        <div class="progress mb-4">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ (rncs_por_status.get('Respondido', 0) / total_rncs * 100)|round }}%"
+                                aria-valuenow="{{ rncs_por_status.get('Respondido', 0) }}" aria-valuemin="0" aria-valuemax="{{ total_rncs }}"></div>
+                        </div>
+                        
+                        <h4 class="small font-weight-bold">Avaliadas <span class="float-end">{{ rncs_por_status.get('Avaliado', 0) }}</span></h4>
+                        <div class="progress mb-4">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ (rncs_por_status.get('Avaliado', 0) / total_rncs * 100)|round }}%"
+                                aria-valuenow="{{ rncs_por_status.get('Avaliado', 0) }}" aria-valuemin="0" aria-valuemax="{{ total_rncs }}"></div>
+                        </div>
+                        
+                        <h4 class="small font-weight-bold">Encerradas <span class="float-end">{{ rncs_por_status.get('Encerrado', 0) }}</span></h4>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ (rncs_por_status.get('Encerrado', 0) / total_rncs *
+                            100)|round }}%"
+                                aria-valuenow="{{ rncs_por_status.get('Encerrado', 0) }}" aria-valuemin="0" aria-valuemax="{{ total_rncs }}"></div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <h5>Total: {{ total_rncs }} RNCs</h5>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-pie fa-3x text-gray-300 mb-3"></i>
+                        <p>Nenhuma RNC registrada.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {# NOVA SEÇÃO: Módulos de Qualidade #}
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-th-large me-1"></i> Módulos de Qualidade
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {# Gestão de INCs #}
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card h-100 border-left-primary">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col">
+                                            <div class="font-weight-bold text-primary mb-1">Gestão de INCs</div>
+                                            <p class="small text-muted mb-2">Registro e controle de informações de não conformidade</p>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light d-flex justify-content-between">
+                                    <a href="{{ url_for('inc.cadastro_inc') }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-plus-circle me-1"></i> Nova INC
+                                    </a>
+                                    <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-list me-1"></i> Listar INCs
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {# RNCs #}
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card h-100 border-left-warning">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col">
+                                            <div class="font-weight-bold text-warning mb-1">Registros de Não Conformidade</div>
+                                            <p class="small text-muted mb-2">Envio de RNCs para fornecedores e acompanhamento</p>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light d-flex justify-content-end">
+                                    <a href="{{ url_for('rnc.listar_rncs') }}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-list me-1"></i> Listar RNCs
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {# Rotinas de Inspeção #}
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card h-100 border-left-info">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col">
+                                            <div class="font-weight-bold text-info mb-1">Rotinas de Inspeção</div>
+                                            <p class="small text-muted mb-2">Registro de inspeções de qualidade</p>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light d-flex justify-content-between">
+                                    <a href="{{ url_for('inspecao.rotina_inspecao') }}" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-plus-circle me-1"></i> Nova Inspeção
+                                    </a>
+                                    <a href="{{ url_for('inspecao.listar_rotinas_inspecao') }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-list me-1"></i> Listar Rotinas
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {# Monitoramento de Fornecedores #}
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card h-100 border-left-success">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col">
+                                            <div class="font-weight-bold text-success mb-1">Monitoramento de Fornecedores</div>
+                                            <p class="small text-muted mb-2">Análise e estatísticas de desempenho</p>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light d-flex justify-content-between">
+                                    <a href="{{ url_for('fornecedor.gerenciar_fornecedores') }}" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-cog me-1"></i> Gerenciar
+                                    </a>
+                                    <a href="{{ url_for('inc.monitorar_fornecedores') }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-chart-bar me-1"></i> Monitorar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {# NOVA SEÇÃO: Visualização e Busca de Fornecedores #}
         <div class="col-lg-12">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">

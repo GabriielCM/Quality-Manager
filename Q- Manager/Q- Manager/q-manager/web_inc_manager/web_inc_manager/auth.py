@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User, LayoutSetting
+from werkzeug.security import check_password_hash, generate_password_hash
+from models import db, User, LayoutSetting, INC, UserActivityLog
 from utils import log_user_activity
 from datetime import datetime
 import json
@@ -99,7 +99,6 @@ def gerenciar_logins():
         
         if action == 'delete' and user.username != current_user.username:
             # Verificar se o usuário é um representante em uso
-            from models import INC
             incs_com_representante = INC.query.filter_by(representante_id=user.id).count()
             if incs_com_representante > 0:
                 flash(f'Não é possível excluir este usuário. Ele é representante em {incs_com_representante} INCs.', 'danger')
@@ -147,7 +146,7 @@ def gerenciar_logins():
                 if len(new_password) < 6:
                     flash('A nova senha deve ter pelo menos 6 caracteres.', 'danger')
                     return redirect(url_for('auth.gerenciar_logins'))
-                user.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+                user.password_hash = generate_password_hash(new_password, method='pbkdf2:sha256')
                 changes['password'] = {'old': '********', 'new': '********'}
             
             # Coletar permissões selecionadas
@@ -204,7 +203,6 @@ def gerenciar_logins():
     ]
     
     # Verificar se há logs para exibir o botão
-    from models import UserActivityLog
     has_logs = UserActivityLog.query.limit(1).count() > 0
     
     return render_template('gerenciar_logins.html', users=users, system_functions=system_functions, has_logs=has_logs)

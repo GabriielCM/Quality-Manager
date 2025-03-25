@@ -1,11 +1,17 @@
 import os
 import sqlite3
 import json
+import logging
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, User, INC, RotinaInspecao, Fornecedor, PrateleiraNaoConforme, SolicitacaoFaturamento, ItemSolicitacaoFaturamento
+from models import db, User, INC, RotinaInspecao, Fornecedor, PrateleiraNaoConforme, SolicitacaoFaturamento, ItemSolicitacaoFaturamento, MigrationHistory
 from utils import log_user_activity
+from datetime import datetime
+from sqlalchemy import text
+
+# Configurar logging
+logger = logging.getLogger(__name__)
 
 migration_bp = Blueprint('migration', __name__, url_prefix='/migration')
 
@@ -242,3 +248,157 @@ def perform_migration(db_path, selected_tables):
     
     source_conn.close()
     return results 
+
+@migration_bp.route('/migrate_db', methods=['POST'])
+@login_required
+def migrate_db():
+    """Executa todas as migrações na sequência correta"""
+    if not current_user.is_admin:
+        flash('Acesso negado. Você precisa ser administrador para acessar esta funcionalidade.', 'danger')
+        return redirect(url_for('main_menu'))
+    
+    try:
+        # Verificar quais migrações são necessárias
+        complete_migrations = check_migrations()
+        
+        if len(complete_migrations) == 0:
+            flash('O banco de dados já está na versão mais recente!', 'info')
+            return redirect(url_for('db_migration.migration_menu'))
+        
+        # Executar cada migração
+        for migration in complete_migrations:
+            logger.info(f'Executando migração: {migration}')
+            
+            # Executar a migração correspondente
+            if migration == 'create_initial_tables':
+                create_initial_tables()
+            elif migration == 'add_user_activity_log':
+                add_user_activity_log()
+            elif migration == 'add_inspection_tables':
+                add_inspection_tables()
+            elif migration == 'add_notifications':
+                add_notifications()
+            elif migration == 'add_prateleira_nao_conforme':
+                add_prateleira_nao_conforme()
+            elif migration == 'add_solicitacao_faturamento':
+                add_solicitacao_faturamento()
+            elif migration == 'add_fornecedor':
+                add_fornecedor()
+            elif migration == 'add_registro_nao_conformidade':
+                add_registro_nao_conformidade()
+            elif migration == 'add_reincidencia_to_rnc':
+                add_reincidencia_to_rnc()
+            
+            # Registrar migração completa
+            migration_record = MigrationHistory(migration_name=migration)
+            db.session.add(migration_record)
+            db.session.commit()
+        
+        flash('Migração de banco de dados concluída com sucesso!', 'success')
+        logger.info('Migração de banco de dados concluída com sucesso!')
+        return redirect(url_for('db_migration.migration_menu'))
+        
+    except Exception as e:
+        db.session.rollback()
+        error_message = f"Erro durante a migração: {str(e)}"
+        flash(error_message, 'danger')
+        logger.error(error_message)
+        return redirect(url_for('db_migration.migration_menu'))
+
+def check_migrations():
+    """Verifica e executa migrações pendentes no banco de dados"""
+    applied_migrations = [m.migration_name for m in MigrationHistory.query.all()]
+    
+    # Lista de migrações disponíveis - adicione novas migrações aqui
+    migrations = [
+        {"name": "initial", "function": initial_migration},
+        {"name": "add_notification_table", "function": add_notification_table},
+        {"name": "add_rnc_table", "function": add_rnc_table},
+        {"name": "add_reincidencia_column", "function": add_reincidencia_column},  # Nova migração
+    ]
+    
+    # Executar migrações pendentes
+    for migration in migrations:
+        if migration["name"] not in applied_migrations:
+            print(f"Aplicando migração: {migration['name']}")
+            try:
+                migration["function"]()
+                
+                # Registrar a migração como aplicada
+                migration_record = MigrationHistory(migration_name=migration["name"])
+                db.session.add(migration_record)
+                db.session.commit()
+                
+                print(f"Migração {migration['name']} aplicada com sucesso.")
+            except Exception as e:
+                print(f"Erro ao aplicar migração {migration['name']}: {e}")
+                db.session.rollback()
+                raise e
+
+def add_registro_nao_conformidade():
+    """Adiciona a tabela registro_nao_conformidade ao banco de dados"""
+    class RegistroNaoConformidade(db.Model):
+        __tablename__ = 'registro_nao_conformidade'
+        
+        id = db.Column(db.Integer, primary_key=True)
+        inc_id = db.Column(db.Integer, db.ForeignKey('inc.id'), nullable=False, index=True)
+        numero = db.Column(db.String(20), unique=True, nullable=False, index=True)
+        fornecedor = db.Column(db.String(200), nullable=False)
+        descricao_nao_conformidade = db.Column(db.Text, nullable=False)
+        nf_ordem_compra = db.Column(db.String(50), nullable=False)
+        reincidencia = db.Column(db.Boolean, default=False, nullable=False)
+        data_emissao = db.Column(db.DateTime, default=datetime.utcnow)
+        data_expiracao = db.Column(db.DateTime, nullable=False)
+        fotos = db.Column(db.Text)
+        desenhos = db.Column(db.Text)
+        token_acesso = db.Column(db.String(64), unique=True, nullable=False, index=True)
+        causa_problema = db.Column(db.Text, nullable=True)
+        plano_contingencia = db.Column(db.Text, nullable=True)
+        acoes_propostas = db.Column(db.Text, nullable=True)
+        respondido_em = db.Column(db.DateTime, nullable=True)
+        status = db.Column(db.String(20), default='Pendente', nullable=False)
+        avaliacao = db.Column(db.Boolean, nullable=True)
+        comentario_avaliacao = db.Column(db.Text, nullable=True)
+        avaliado_em = db.Column(db.DateTime, nullable=True)
+        avaliado_por = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Criar a tabela no banco de dados
+    db.create_all()
+    
+    # Registrar no log
+    logger.info('Tabela registro_nao_conformidade criada com sucesso!')
+
+def add_reincidencia_to_rnc():
+    """Adiciona a coluna reincidencia à tabela registro_nao_conformidade"""
+    # Use SQL bruto para adicionar a coluna
+    sql = text("ALTER TABLE registro_nao_conformidade ADD COLUMN reincidencia BOOLEAN DEFAULT 0 NOT NULL;")
+    db.session.execute(sql)
+    db.session.commit()
+    
+    # Registrar no log
+    logger.info('Coluna reincidencia adicionada à tabela registro_nao_conformidade com sucesso!')
+
+def add_reincidencia_column():
+    """Adiciona a coluna reincidencia à tabela registro_nao_conformidade se ela não existir"""
+    # Verificar se a tabela existe
+    inspector = db.inspect(db.engine)
+    if 'registro_nao_conformidade' not in inspector.get_table_names():
+        print("Tabela registro_nao_conformidade não existe. Migração ignorada.")
+        return
+    
+    # Verificar se a coluna já existe
+    columns = [col['name'] for col in inspector.get_columns('registro_nao_conformidade')]
+    if 'reincidencia' in columns:
+        print("Coluna reincidencia já existe. Migração ignorada.")
+        return
+    
+    # Adicionar a coluna
+    with db.engine.connect() as conn:
+        conn.execute(db.text(
+            "ALTER TABLE registro_nao_conformidade ADD COLUMN reincidencia BOOLEAN DEFAULT FALSE"
+        ))
+        conn.commit()
+    
+    print("Coluna reincidencia adicionada com sucesso à tabela registro_nao_conformidade.") 

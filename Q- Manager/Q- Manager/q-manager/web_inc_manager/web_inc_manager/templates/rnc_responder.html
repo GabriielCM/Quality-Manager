@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responder Registro de Não Conformidade - Cristófoli</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .logo {
+            max-height: 80px;
+        }
+        .header {
+            background-color: #fff;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+            padding: 15px 0;
+            margin-bottom: 30px;
+        }
+        .footer {
+            background-color: #343a40;
+            color: #fff;
+            padding: 20px 0;
+            margin-top: 50px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+        }
+        .card-header {
+            font-weight: bold;
+            background-color: #f1f1f1;
+        }
+        .required-field::after {
+            content: "*";
+            color: red;
+            margin-left: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <div class="header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Cristófoli Logo" class="logo">
+                </div>
+                <div class="col-md-6 text-end">
+                    <h4>Registro de Não Conformidade</h4>
+                    <h5>#{{ rnc.numero }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo principal -->
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- Alerta de erro, se existir -->
+                {% if erro %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i> <strong>Erro:</strong> {{ erro }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                </div>
+                {% endif %}
+                
+                <!-- Instruções -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-info-circle me-2"></i> Informações Importantes
+                    </div>
+                    <div class="card-body">
+                        <p>Este formulário destina-se à resposta do fornecedor em relação ao Registro de Não Conformidade (RNC) enviado pela Cristófoli.</p>
+                        <p>Por favor, preencha todas as informações solicitadas no plano de ação:</p>
+                        <ul>
+                            <li><strong>Causa do Problema:</strong> Identifique a causa raiz do problema relatado.</li>
+                            <li><strong>Plano de Contingência:</strong> Descreva as ações imediatas tomadas para corrigir o problema atual.</li>
+                            <li><strong>Ações Propostas:</strong> Informe as ações preventivas para evitar reincidência do problema.</li>
+                        </ul>
+                        <p class="text-danger"><strong>Atenção:</strong> Este link de acesso é válido até {{ rnc.data_expiracao.strftime('%d/%m/%Y') }}.</p>
+                    </div>
+                </div>
+
+                <!-- Dados do RNC -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Descrição da Não Conformidade
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <h6 class="text-muted">Fornecedor:</h6>
+                                <p>{{ rnc.fornecedor }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-muted">NF/OC:</h6>
+                                <p>{{ rnc.nf_ordem_compra }}</p>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-muted">Reincidência:</h6>
+                            <p>
+                                {% if rnc.reincidencia %}
+                                    <span class="badge bg-danger">Sim</span>
+                                    <small class="text-muted d-block">Este problema já ocorreu anteriormente</small>
+                                {% else %}
+                                    <span class="badge bg-success">Não</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-muted">Descrição:</h6>
+                            <p style="white-space: pre-wrap;">{{ rnc.descricao_nao_conformidade }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fotos da não conformidade -->
+                {% if rnc.fotos %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-images me-2"></i> Fotos da Não Conformidade
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for foto in rnc.fotos_list %}
+                            <div class="col-md-3 mb-3">
+                                <a href="{{ url_for('static', filename=foto|replace('static/', '')) }}" target="_blank">
+                                    <img src="{{ url_for('static', filename=foto|replace('static/', '')) }}" class="img-fluid img-thumbnail" style="max-height: 150px;">
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Desenhos técnicos -->
+                {% if rnc.desenhos %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-drafting-compass me-2"></i> Desenhos Técnicos
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for desenho in rnc.desenhos_list %}
+                            <div class="col-md-3 mb-3">
+                                {% if desenho.lower().endswith('.pdf') %}
+                                <a href="{{ url_for('static', filename=desenho|replace('static/', '')) }}" target="_blank" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-file-pdf me-1"></i> 
+                                    {{ desenho.split('/')[-1] }}
+                                </a>
+                                {% else %}
+                                <a href="{{ url_for('static', filename=desenho|replace('static/', '')) }}" target="_blank">
+                                    <img src="{{ url_for('static', filename=desenho|replace('static/', '')) }}" class="img-fluid img-thumbnail" style="max-height: 150px;">
+                                </a>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Formulário para resposta -->
+                <form method="POST" class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-reply me-2"></i> Plano de Ação
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="causa_problema" class="form-label required-field">Causa do Problema</label>
+                            <textarea class="form-control" id="causa_problema" name="causa_problema" rows="4" required></textarea>
+                            <div class="form-text">Descreva detalhadamente a causa raiz identificada para o problema.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="plano_contingencia" class="form-label required-field">Plano de Contingência</label>
+                            <textarea class="form-control" id="plano_contingencia" name="plano_contingencia" rows="4" required></textarea>
+                            <div class="form-text">Descreva as ações imediatas tomadas para resolver o problema atual.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="acoes_propostas" class="form-label required-field">Ações Propostas para Evitar Reincidência</label>
+                            <textarea class="form-control" id="acoes_propostas" name="acoes_propostas" rows="4" required></textarea>
+                            <div class="form-text">Descreva as ações preventivas que serão implementadas para evitar que o problema ocorra novamente.</div>
+                        </div>
+                        <div class="form-text mb-3">
+                            <i class="fas fa-info-circle me-1"></i> Todos os campos marcados com * são obrigatórios.
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i> Enviar Resposta
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rodapé -->
+    <div class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>&copy; {{ now().year }} Cristófoli Biossegurança. Todos os direitos reservados.</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p>Em caso de dúvidas, entre em contato com nosso departamento de qualidade.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

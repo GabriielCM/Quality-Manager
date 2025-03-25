@@ -1,26 +1,9 @@
-from flask import (
-    Blueprint, 
-    render_template, 
-    request, 
-    redirect, 
-    url_for, 
-    flash, 
-    send_file, 
-    jsonify, 
-    current_app
-)
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, make_response, send_file
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
 from models import db, User, INC, Fornecedor, Notification
-from utils import (
-    validate_item_format, 
-    save_file, 
-    remove_file, 
-    log_user_activity, 
-    parse_date, 
-    format_date_for_db
-)
+from utils import validate_item_format, save_file, remove_file, log_user_activity, parse_date, format_date_for_db
 from datetime import datetime, timedelta
 import json
 import os
@@ -28,6 +11,8 @@ import socket
 import logging
 import base64
 import matplotlib.pyplot as plt
+from io import BytesIO
+import csv
 
 inc_bp = Blueprint('inc', __name__, url_prefix='/inc')
 
@@ -284,7 +269,8 @@ def cadastro_inc():
         quantidade_recebida = int(request.form['quantidade_recebida'])
         quantidade_com_defeito = int(request.form['quantidade_com_defeito'])
         descricao_defeito = request.form.get('descricao_defeito', '')
-        urgencia = request.form.get('urgencia', 'Moderada')
+        # Campo de urgência removido - usar valor padrão 'Moderada'
+        urgencia = 'Moderada'
         acao_recomendada = request.form.get('acao_recomendada', '')
 
         # Obter o representante pelo ID

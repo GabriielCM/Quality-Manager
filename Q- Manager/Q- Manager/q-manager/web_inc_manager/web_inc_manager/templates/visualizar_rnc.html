@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-file-alt me-2"></i>Registro de Não Conformidade #{{ rnc.numero }}
+            </h5>
+            <div>
+                <a href="{{ url_for('rnc.exportar_pdf_rnc', rnc_id=rnc.id) }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-file-pdf me-1"></i> Exportar PDF
+                </a>
+                <a href="{{ url_for('inc.detalhes_inc', inc_id=rnc.inc_id) }}" class="btn btn-sm btn-info">
+                    <i class="fas fa-link me-1"></i> INC Original
+                </a>
+                <a href="{{ url_for('rnc.listar_rncs') }}" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-list me-1"></i> Listar RNCs
+                </a>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <!-- Status do RNC -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Status:</h6>
+                        {% if rnc.status == 'Pendente' %}
+                        <span class="badge bg-warning text-dark">Aguardando resposta do fornecedor</span>
+                        {% elif rnc.status == 'Respondido' %}
+                        <span class="badge bg-info">Respondido - Aguardando avaliação</span>
+                        {% elif rnc.status == 'Encerrado' %}
+                        <span class="badge bg-success">Plano de ação aprovado</span>
+                        {% elif rnc.status == 'Rejeitado' %}
+                        <span class="badge bg-danger">Plano de ação rejeitado</span>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Fornecedor:</h6>
+                        <p class="fs-5">{{ rnc.fornecedor }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">NF/OC:</h6>
+                        <p>{{ rnc.nf_ordem_compra }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Reincidência:</h6>
+                        <p>
+                            {% if rnc.reincidencia %}
+                                <span class="badge bg-danger">Sim</span>
+                                <small class="text-muted d-block">Este problema já ocorreu anteriormente</small>
+                            {% else %}
+                                <span class="badge bg-success">Não</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Data de Emissão:</h6>
+                        <p>{{ rnc.data_emissao.strftime('%d/%m/%Y %H:%M') }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Validade do Link:</h6>
+                        <p>
+                            {% if rnc.expirado %}
+                            <span class="badge bg-danger">Expirado</span>
+                            {% else %}
+                            Expira em {{ rnc.data_expiracao.strftime('%d/%m/%Y') }}
+                            <span class="badge bg-success">Ativo</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% if rnc.respondido_em %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Respondido em:</h6>
+                        <p>{{ rnc.respondido_em.strftime('%d/%m/%Y %H:%M') }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Link para o fornecedor -->
+            {% if rnc.status == 'Pendente' and not rnc.expirado %}
+            <div class="card bg-light mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-link me-1"></i> Link para o Fornecedor
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" value="{{ link_fornecedor }}" id="link_fornecedor" readonly>
+                        <button class="btn btn-outline-primary" type="button" onclick="copyToClipboard('link_fornecedor')">
+                            <i class="fas fa-copy"></i> Copiar
+                        </button>
+                    </div>
+                    <p class="text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Este link permite que o fornecedor responda ao RNC sem necessidade de login. 
+                        É válido até {{ rnc.data_expiracao.strftime('%d/%m/%Y') }}.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Descrição da não conformidade -->
+            <div class="card bg-light mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-exclamation-triangle me-1"></i> Descrição da Não Conformidade
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p style="white-space: pre-wrap;">{{ rnc.descricao_nao_conformidade }}</p>
+                </div>
+            </div>
+
+            <!-- Fotos da não conformidade -->
+            {% if rnc.fotos %}
+            <div class="card bg-light mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-images me-1"></i> Fotos da Não Conformidade
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for foto in rnc.fotos_list %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('static', filename=foto|replace('static/', '')) }}" target="_blank">
+                                <img src="{{ url_for('static', filename=foto|replace('static/', '')) }}" class="img-fluid img-thumbnail" style="max-height: 200px;">
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Desenhos técnicos -->
+            {% if rnc.desenhos %}
+            <div class="card bg-light mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-drafting-compass me-1"></i> Desenhos Técnicos
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for desenho in rnc.desenhos_list %}
+                        <div class="col-md-3 mb-3">
+                            {% if desenho.lower().endswith('.pdf') %}
+                            <a href="{{ url_for('static', filename=desenho|replace('static/', '')) }}" target="_blank" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-file-pdf me-1"></i> 
+                                {{ desenho.split('/')[-1] }}
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('static', filename=desenho|replace('static/', '')) }}" target="_blank">
+                                <img src="{{ url_for('static', filename=desenho|replace('static/', '')) }}" class="img-fluid img-thumbnail" style="max-height: 200px;">
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Resposta do fornecedor (se existir) -->
+            {% if rnc.status in ['Respondido', 'Encerrado', 'Rejeitado'] %}
+            <div class="card bg-light mb-4">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-reply me-1"></i> Resposta do Fornecedor
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Causa do Problema:</h6>
+                        <p>{{ rnc.causa_problema }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Plano de Contingência:</h6>
+                        <p>{{ rnc.plano_contingencia }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Ações Propostas para Evitar Reincidência:</h6>
+                        <p>{{ rnc.acoes_propostas }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Avaliação da resposta (se ainda não avaliada) -->
+            {% if rnc.status == 'Respondido' %}
+            <div class="card border-warning mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-check-circle me-1"></i> Avaliação da Resposta
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form id="avaliacaoForm">
+                        <div class="mb-3">
+                            <label class="form-label">A resposta do fornecedor é satisfatória?</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="avaliacao" id="aprovado" value="true" required>
+                                <label class="form-check-label" for="aprovado">
+                                    <span class="badge bg-success">Sim</span> - O plano de ação é satisfatório
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="avaliacao" id="rejeitado" value="false">
+                                <label class="form-check-label" for="rejeitado">
+                                    <span class="badge bg-danger">Não</span> - O plano de ação não é satisfatório
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="comentario" class="form-label">Comentários (opcional):</label>
+                            <textarea class="form-control" id="comentario" name="comentario" rows="3"></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary" onclick="avaliarRNC()">
+                                <i class="fas fa-paper-plane me-1"></i> Enviar Avaliação
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Avaliação já realizada -->
+            {% if rnc.status in ['Encerrado', 'Rejeitado'] and rnc.avaliado_em %}
+            <div class="card {% if rnc.avaliacao %}border-success{% else %}border-danger{% endif %} mb-4">
+                <div class="card-header {% if rnc.avaliacao %}bg-success{% else %}bg-danger{% endif %} text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-{% if rnc.avaliacao %}check{% else %}times{% endif %}-circle me-1"></i> 
+                        Avaliação da Resposta
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Resultado:</h6>
+                        <p>
+                            {% if rnc.avaliacao %}
+                            <span class="badge bg-success">APROVADO</span> - Plano de ação aceito
+                            {% else %}
+                            <span class="badge bg-danger">REJEITADO</span> - Plano de ação não aceito
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% if rnc.comentario_avaliacao %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Comentários:</h6>
+                        <p>{{ rnc.comentario_avaliacao }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Avaliado por:</h6>
+                        <p>{{ rnc.avaliador.username }} em {{ rnc.avaliado_em.strftime('%d/%m/%Y %H:%M') }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(elementId) {
+    const copyText = document.getElementById(elementId);
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(copyText.value);
+    
+    // Feedback
+    showToast('Link copiado para a área de transferência!', 'success');
+}
+
+function avaliarRNC() {
+    const form = document.getElementById('avaliacaoForm');
+    const avaliacao = form.querySelector('input[name="avaliacao"]:checked');
+    
+    if (!avaliacao) {
+        showToast('Por favor, selecione uma opção de avaliação', 'warning');
+        return;
+    }
+    
+    const comentario = document.getElementById('comentario').value;
+    const data = {
+        avaliacao: avaliacao.value === 'true',
+        comentario: comentario
+    };
+    
+    fetch('{{ url_for("rnc.avaliar_rnc", rnc_id=rnc.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Avaliação registrada com sucesso!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showToast('Erro: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        showToast('Erro ao enviar avaliação: ' + error, 'danger');
+    });
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-exclamation-triangle me-2"></i>Criar Registro de Não Conformidade (RNC)
+            </h5>
+            <div>
+                <a href="{{ url_for('inc.detalhes_inc', inc_id=inc.id) }}" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar para INC
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <div class="d-flex">
+                    <div class="me-2">
+                        <i class="fas fa-info-circle fa-2x"></i>
+                    </div>
+                    <div>
+                        <h5 class="alert-heading">Criando RNC a partir da INC #{{ inc.oc }}</h5>
+                        <p>
+                            Você está criando um Registro de Não Conformidade que será enviado ao fornecedor <strong>{{ inc.fornecedor }}</strong>.
+                            O fornecedor receberá um link válido por 7 dias para responder ao RNC.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                Dados do RNC
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="nf_ordem_compra" class="form-label">NF ou Ordem de Compra</label>
+                                    <input type="text" class="form-control" id="nf_ordem_compra" name="nf_ordem_compra" value="{{ inc.nf }}" required>
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="reincidencia" name="reincidencia">
+                                    <label class="form-check-label" for="reincidencia">Reincidência</label>
+                                    <small class="form-text text-muted d-block">Marque se este problema já ocorreu anteriormente com este fornecedor</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="descricao_nao_conformidade" class="form-label">Descrição da Não Conformidade</label>
+                                    <textarea class="form-control" id="descricao_nao_conformidade" name="descricao_nao_conformidade" rows="8" required style="white-space: pre-wrap;">{{ inc.descricao_defeito }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                Detalhes da INC Original
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th style="width: 30%;">Item:</th>
+                                        <td>{{ inc.item }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Fornecedor:</th>
+                                        <td>{{ inc.fornecedor }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Data:</th>
+                                        <td>{{ inc.data }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Qtd. Recebida:</th>
+                                        <td>{{ inc.quantidade_recebida }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Qtd. Defeituosa:</th>
+                                        <td>{{ inc.quantidade_com_defeito }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Urgência:</th>
+                                        <td>
+                                            {% if inc.urgencia == 'Crítico' %}
+                                            <span class="badge bg-danger">{{ inc.urgencia }}</span>
+                                            {% elif inc.urgencia == 'Moderada' %}
+                                            <span class="badge bg-warning text-dark">{{ inc.urgencia }}</span>
+                                            {% else %}
+                                            <span class="badge bg-info">{{ inc.urgencia }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-light mb-4">
+                    <div class="card-header">
+                        Documentação Técnica
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="desenhos" class="form-label">Adicionar Desenhos Técnicos (opcional)</label>
+                                    <input type="file" class="form-control" id="desenhos" name="desenhos" multiple accept="image/*,.pdf">
+                                    <small class="form-text text-muted">Formatos aceitos: JPG, PNG, PDF. Máximo de 5MB por arquivo.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Fotos da INC (serão incluídas automaticamente)</h6>
+                                <div class="row" style="max-height: 200px; overflow-y: auto;">
+                                    {% if inc.fotos %}
+                                    {% set fotos = inc.fotos|from_json %}
+                                    {% for foto in fotos %}
+                                    <div class="col-md-4 mb-2">
+                                        <img src="{{ url_for('static', filename=foto|replace('static/', '')) }}" class="img-thumbnail" style="height: 100px;">
+                                    </div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <div class="col">
+                                        <p class="text-muted">Nenhuma foto anexada à INC</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-paper-plane me-2"></i> Criar RNC
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

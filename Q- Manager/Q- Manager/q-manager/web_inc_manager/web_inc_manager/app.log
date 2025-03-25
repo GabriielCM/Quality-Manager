@@ -11852,3 +11852,29 @@
 2025-03-21 14:29:28,535 - INFO - _internal.py:97 - 127.0.0.1 - - [21/Mar/2025 14:29:28] "GET /main_menu HTTP/1.1" 200 -
 2025-03-21 14:29:28,646 - INFO - _internal.py:97 - 127.0.0.1 - - [21/Mar/2025 14:29:28] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
 2025-03-21 14:29:28,708 - INFO - _internal.py:97 - 127.0.0.1 - - [21/Mar/2025 14:29:28] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 -
+2025-03-24 21:44:55,045 - INFO - _internal.py:224 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.3:5000
+2025-03-24 21:44:55,046 - INFO - _internal.py:224 - [33mPress CTRL+C to quit[0m
+2025-03-24 21:44:55,048 - INFO - _internal.py:224 -  * Restarting with stat
+2025-03-24 21:44:57,631 - WARNING - _internal.py:224 -  * Debugger is active!
+2025-03-24 21:44:57,636 - INFO - _internal.py:224 -  * Debugger PIN: 121-841-542
+2025-03-24 22:06:09,723 - INFO - _internal.py:224 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.3:5000
+2025-03-24 22:06:09,724 - INFO - _internal.py:224 - [33mPress CTRL+C to quit[0m
+2025-03-24 22:06:09,725 - INFO - _internal.py:224 -  * Restarting with stat
+2025-03-24 22:06:11,158 - WARNING - _internal.py:224 -  * Debugger is active!
+2025-03-24 22:06:11,161 - INFO - _internal.py:224 -  * Debugger PIN: 121-841-542
+2025-03-24 22:45:09,302 - ERROR - app.py:330 - Erro ao verificar migrações: name 'initial_migration' is not defined
+2025-03-24 22:45:09,327 - INFO - _internal.py:224 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.3:5000
+2025-03-24 22:45:09,327 - INFO - _internal.py:224 - [33mPress CTRL+C to quit[0m
+2025-03-24 22:45:09,329 - INFO - _internal.py:224 -  * Restarting with stat
+2025-03-24 22:45:11,084 - ERROR - app.py:330 - Erro ao verificar migrações: name 'initial_migration' is not defined
+2025-03-24 22:45:11,098 - WARNING - _internal.py:224 -  * Debugger is active!
+2025-03-24 22:45:11,101 - INFO - _internal.py:224 -  * Debugger PIN: 121-841-542

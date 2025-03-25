@@ -9,6 +9,9 @@
                         <i class="fas fa-file-alt me-2"></i>Detalhes da INC #{{ inc.oc }}
                     </h4>
                     <div>
+                        <a href="{{ url_for('rnc.criar_rnc', inc_id=inc.id) }}" class="btn btn-sm btn-warning">
+                            <i class="fas fa-exclamation-triangle me-1"></i> Criar RNC
+                        </a>
                         <a href="{{ url_for('inc.export_pdf', inc_id=inc.id) }}" class="btn btn-sm btn-primary">
                             <i class="fas fa-file-pdf me-1"></i> Exportar PDF
                         </a>
@@ -77,7 +80,7 @@
                                     <div class="card-body">
                                         <div class="mb-3">
                                             <label class="form-label fw-bold">Descrição do Defeito:</label>
-                                            <p>{{ inc.descricao_defeito }}</p>
+                                            <p style="white-space: pre-wrap;">{{ inc.descricao_defeito }}</p>
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label fw-bold">Urgência:</label>
@@ -214,21 +217,33 @@
                     </div>
                     {% endif %}
                     
-                    <div class="row mt-4">
-                        <div class="col-12 d-flex justify-content-center">
-                            <a href="{{ url_for('inc.export_pdf', inc_id=inc.id) }}" class="btn btn-primary me-2">
-                                <i class="fas fa-file-pdf me-1"></i> Exportar PDF
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Voltar para Lista
                             </a>
-                            <a href="{{ url_for('inc.print_inc_label', inc_id=inc.id) }}" class="btn btn-info me-2">
-                                <i class="fas fa-print me-1"></i> Imprimir Etiqueta
+                            <a href="{{ url_for('inc.editar_inc', inc_id=inc.id) }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-edit me-1"></i> Editar
                             </a>
-                            <button onclick="editarINC({{ inc.id }})" class="btn btn-warning me-2">
-                                <i class="fas fa-edit me-1"></i> Editar INC
-                            </button>
-                            <a href="{{ url_for('inc.visualizar_incs') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-1"></i> Voltar
-                            </a>
+                            {% if inc.status == 'Concluída' %}
+                                {% if inc.registros_nc|length > 0 %}
+                                <a href="{{ url_for('rnc.visualizar_rnc', rnc_id=inc.registros_nc[0].id) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i> Ver RNC
+                                </a>
+                                {% else %}
+                                <a href="{{ url_for('rnc.criar_rnc', inc_id=inc.id) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i> Criar RNC
+                                </a>
+                                {% endif %}
+                            {% endif %}
                         </div>
+                        {% if inc.status != 'Concluída' %}
+                        <div>
+                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#concluirModal">
+                                <i class="fas fa-check-circle me-1"></i> Concluir INC
+                            </button>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

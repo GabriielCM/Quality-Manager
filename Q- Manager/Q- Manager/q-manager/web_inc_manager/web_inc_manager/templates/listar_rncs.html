@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-clipboard-list me-2"></i>Registros de Não Conformidade (RNCs)
+            </h5>
+            <div>
+                <a href="{{ url_for('main_menu') }}" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-home me-1"></i> Menu Principal
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Filtros -->
+            <div class="card bg-light mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-filter me-1"></i> Filtros
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="fornecedor" class="form-label">Fornecedor</label>
+                            <input type="text" class="form-control" id="fornecedor" name="fornecedor" value="{{ request.args.get('fornecedor', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="numero" class="form-label">Número RNC</label>
+                            <input type="text" class="form-control" id="numero" name="numero" value="{{ request.args.get('numero', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">Todos</option>
+                                <option value="Pendente" {% if request.args.get('status') == 'Pendente' %}selected{% endif %}>Pendente</option>
+                                <option value="Respondido" {% if request.args.get('status') == 'Respondido' %}selected{% endif %}>Respondido</option>
+                                <option value="Encerrado" {% if request.args.get('status') == 'Encerrado' %}selected{% endif %}>Encerrado</option>
+                                <option value="Rejeitado" {% if request.args.get('status') == 'Rejeitado' %}selected{% endif %}>Rejeitado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="data_inicial" class="form-label">Data Inicial</label>
+                            <input type="date" class="form-control" id="data_inicial" name="data_inicial" value="{{ request.args.get('data_inicial', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="data_final" class="form-label">Data Final</label>
+                            <input type="date" class="form-control" id="data_final" name="data_final" value="{{ request.args.get('data_final', '') }}">
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabela de resultados -->
+            {% if rncs %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover datatable" id="rncTable" width="100%" cellspacing="0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Número</th>
+                            <th>Fornecedor</th>
+                            <th>Data Emissão</th>
+                            <th>Status</th>
+                            <th>Validade</th>
+                            <th>Respondido</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rnc in rncs %}
+                        <tr>
+                            <td>{{ rnc.numero }}</td>
+                            <td>{{ rnc.fornecedor }}</td>
+                            <td>{{ rnc.data_emissao.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                {% if rnc.status == 'Pendente' %}
+                                <span class="badge bg-warning text-dark">Pendente</span>
+                                {% elif rnc.status == 'Respondido' %}
+                                <span class="badge bg-info">Respondido</span>
+                                {% elif rnc.status == 'Encerrado' %}
+                                <span class="badge bg-success">Encerrado</span>
+                                {% elif rnc.status == 'Rejeitado' %}
+                                <span class="badge bg-danger">Rejeitado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rnc.expirado %}
+                                <span class="badge bg-danger">Expirado</span>
+                                {% else %}
+                                {{ rnc.data_expiracao.strftime('%d/%m/%Y') }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rnc.respondido_em %}
+                                {{ rnc.respondido_em.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('rnc.visualizar_rnc', rnc_id=rnc.id) }}" class="btn btn-sm btn-primary" title="Visualizar">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('rnc.exportar_pdf_rnc', rnc_id=rnc.id) }}" class="btn btn-sm btn-info" title="Exportar PDF">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                                <a href="{{ url_for('inc.detalhes_inc', inc_id=rnc.inc_id) }}" class="btn btn-sm btn-secondary" title="Ver INC">
+                                    <i class="fas fa-link"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle me-2"></i> Nenhum registro de não conformidade encontrado.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#rncTable').DataTable({
+            "order": [[2, "desc"]], // Ordenar por data de emissão (decrescente)
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json"
+            }
+        });
+    });
+</script>
+{% endblock %} 

@@ -13,8 +13,9 @@ from flask_migrate import Migrate
 from datetime import datetime, timedelta
 # Importar módulos do aplicativo
 from config import Config
-from models import db, User, INC, RotinaInspecao, LayoutSetting, Fornecedor, Notification
+from models import db, User, INC, RotinaInspecao, LayoutSetting, Fornecedor, Notification, RegistroNaoConformidade
 from utils import log_user_activity, save_file, remove_file
+from context_processors import inject_now, inject_settings
 
 # Importar rotas de cada módulo
 import auth
@@ -26,6 +27,7 @@ import faturamento_routes
 import log_routes
 import api_routes
 import db_migration
+import rnc_routes
 
 # Inicializar o aplicativo
 app = Flask(__name__)
@@ -72,6 +74,11 @@ def date_filter(value, format='%d/%m/%Y %H:%M'):
         app.logger.error(f"Erro ao formatar data: {e}")
         return str(value)
 
+# Adicionar a função now() ao contexto global do Jinja2
+@app.template_global()
+def now():
+    return datetime.utcnow()
+
 # Configurar login
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -103,6 +110,7 @@ app.register_blueprint(faturamento_routes.faturamento_bp)
 app.register_blueprint(log_routes.log_bp)
 app.register_blueprint(api_routes.api_bp)
 app.register_blueprint(db_migration.migration_bp)
+app.register_blueprint(rnc_routes.rnc_bp)
 
 # Loader de usuário para Flask-Login
 @login_manager.user_loader
@@ -183,6 +191,51 @@ def main_menu():
             for fornecedor, total in fornecedor_ranking
         ]
         
+        # Verificamos se a tabela RegistroNaoConformidade existe e tem a coluna reincidencia
+        try:
+            # Tentativa segura de buscar RNCs
+            ultimas_rncs = []
+            rncs_por_status = {}
+            total_rncs = 0
+            
+            # Verificar se a tabela existe primeiro
+            inspector = db.inspect(db.engine)
+            if 'registro_nao_conformidade' in inspector.get_table_names():
+                # Verificar se a coluna 'reincidencia' existe
+                columns = [col['name'] for col in inspector.get_columns('registro_nao_conformidade')]
+                
+                # Aplicar a migração para adicionar a coluna se ela não existir
+                if 'reincidencia' not in columns:
+                    app.logger.warning("Coluna 'reincidencia' não encontrada. Tentando aplicar migração...")
+                    try:
+                        with db.engine.connect() as conn:
+                            conn.execute(db.text(
+                                "ALTER TABLE registro_nao_conformidade ADD COLUMN reincidencia BOOLEAN DEFAULT FALSE"
+                            ))
+                            conn.commit()
+                        app.logger.info("Coluna 'reincidencia' adicionada com sucesso.")
+                    except Exception as e:
+                        app.logger.error(f"Erro ao adicionar coluna 'reincidencia': {e}")
+                
+                # Construir query segura que não depende da coluna reincidencia
+                ultimas_rncs = db.session.query(RegistroNaoConformidade).order_by(
+                    RegistroNaoConformidade.data_emissao.desc()
+                ).limit(5).all()
+                
+                # Contagem de RNCs por status
+                rncs_stats = db.session.query(
+                    RegistroNaoConformidade.status,
+                    db.func.count(RegistroNaoConformidade.id).label('total')
+                ).group_by(RegistroNaoConformidade.status).all()
+                
+                rncs_por_status = {status: total for status, total in rncs_stats}
+                total_rncs = sum(rncs_por_status.values())
+        except Exception as e:
+            app.logger.error(f"Erro ao processar RNCs: {e}")
+            ultimas_rncs = []
+            rncs_por_status = {}
+            total_rncs = 0
+        
         # Fornecedores com últimas INCs - Otimizado com JOIN
         # Coletando IDs de fornecedores primeiro para economizar memória
         fornecedor_ids = db.session.query(Fornecedor.id, Fornecedor.razao_social).all()
@@ -224,7 +277,10 @@ def main_menu():
                               total_inspecionados=total_inspecionados,
                               ultimas_rotinas=ultimas_rotinas,
                               fornecedor_ranking=fornecedor_ranking,
-                              fornecedores=fornecedores_list)
+                              fornecedores=fornecedores_list,
+                              ultimas_rncs=ultimas_rncs,
+                              rncs_por_status=rncs_por_status,
+                              total_rncs=total_rncs)
     except Exception as e:
         app.logger.error(f"Erro no main_menu: {e}")
         flash(f"Ocorreu um erro ao carregar o menu principal. Detalhes: {str(e)}", "danger")
@@ -232,10 +288,8 @@ def main_menu():
 
 # Processador de contexto para injetar configurações
 @app.context_processor
-def inject_settings():
-    from models import LayoutSetting
-    settings = {s.element: s for s in LayoutSetting.query.all()}
-    return dict(settings=settings, config=app.config)
+def inject_app_settings():
+    return inject_settings(app)
 
 # Adicionar filtros ao Jinja2
 import json as json_lib
@@ -250,8 +304,8 @@ def page_not_found(e):
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    app.logger.error(f"Erro 500: {str(e)}")
-    return render_template('errors/500.html'), 500
+    app.logger.error(f"Erro 500: {e}")
+    return render_template('error/500.html'), 500
 
 # Inicialização do banco de dados deve ser feita apenas uma vez
 with app.app_context():
@@ -266,5 +320,13 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
 
+# Executar aplicativo diretamente quando este arquivo é chamado
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)  # Desabilitar debug em produção
+    with app.app_context():
+        # Verificar e aplicar migrações pendentes
+        try:
+            db_migration.check_migrations()
+        except Exception as e:
+            app.logger.error(f"Erro ao verificar migrações: {e}")
+            
+    app.run(debug=True, host='0.0.0.0', port=5000)
