@@ -526,20 +526,23 @@ class NotificationSystem {
         }
         
         // Adicionar evento de clique no sino
-        this.bell.addEventListener('click', () => {
+        this.bell.addEventListener('click', (e) => {
+            e.stopPropagation(); // Impedir propagação para o document
             this.toggleNotificationCenter();
             console.log('Notificações toggles. Estado:', this.container.classList.contains('show'));
         });
         
-        // Fechar ao clicar fora
-        document.addEventListener('click', (e) => {
+        // Fechar ao clicar fora - usar mousedown para capturar cliques mais rapidamente
+        document.addEventListener('mousedown', (e) => {
             if (this.container && 
                 this.container.classList.contains('show') && 
                 !this.container.contains(e.target) && 
                 e.target !== this.bell) {
                 this.container.classList.remove('show');
+                this.container.classList.remove('open');
+                console.log('Centro de notificações fechado pelo documento');
             }
-        });
+        }, true);
         
         // Botão "Marcar todas como lidas"
         const markAllBtn = this.container.querySelector('.mark-all-read');
